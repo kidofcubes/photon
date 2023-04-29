@@ -71,9 +71,9 @@ void main() {
 
 #if defined WORLD_OVERWORLD
 	overcastness  = daily_weather_blend(daily_weather_overcastness);
-	light_color   = get_light_color() * (1.0 - 0.4 * overcastness);
-	sun_color     = get_sun_exposure() * get_sun_tint();
-	moon_color    = get_moon_exposure() * get_moon_tint();
+	light_color   = get_light_color(overcastness) * (1.0 - 0.4 * overcastness);
+	sun_color     = get_sun_exposure() * get_sun_tint(overcastness);
+	moon_color    = get_moon_exposure() * get_moon_tint(overcastness);
 	ambient_color = get_sky_color();
 #endif
 
@@ -336,8 +336,12 @@ void main() {
 
 	vec2 fog_uv = clamp(uv * VL_RENDER_SCALE, vec2(0.0), floor(view_res * VL_RENDER_SCALE - 1.0) * view_pixel_size);
 
-	vec3 fog_scattering    = smooth_filter(colortex6, fog_uv).rgb;
 	vec3 fog_transmittance = smooth_filter(colortex7, fog_uv).rgb;
+#ifndef MINECRAFTY_CLOUDS
+	vec4 fog_scattering    = smooth_filter(colortex6, fog_uv);
+#else
+	vec4 fog_scattering    = bicubic_filter(colortex6, clamp(fog_uv, vec2(0.0), VL_RENDER_SCALE - 2.0 * view_pixel_size));
+#endif
 
 	bool is_translucent = depth0 != depth1 || blend_color.a > 0.1;
 	depth0 *= float(depth0 != depth1 || !is_translucent);
@@ -453,12 +457,14 @@ void main() {
 
 #if REFRACTION == REFRACTION_WATER_ONLY
 	if (is_water) {
+		#define refraction_mul REFRACTION_INTENSITY_WATER
 #elif REFRACTION == REFRACTION_ALL
 	if (is_translucent) {
+		float refraction_mul = is_water ? REFRACTION_INTENSITY_WATER : REFRACTION_INTENSITY_RP;
 #endif
 		vec3 tangent_normal = normal * tbn;
 
-		refracted_uv = uv + 0.1 * tangent_normal.xy * rcp(max(view_dist, 1.0)) * min(layer_dist, 8.0);
+		refracted_uv = uv + (0.1 * refraction_mul) * tangent_normal.xy * rcp(max(view_dist, 1.0)) * min(layer_dist, 8.0);
 
 		vec3  refracted_color = texture(colortex0, refracted_uv * taau_render_scale).rgb;
 		float refracted_depth = texture(depthtex1, refracted_uv * taau_render_scale).x;
@@ -636,7 +642,11 @@ void main() {
 
 #if defined VL && defined WORLD_OVERWORLD
 	// Volumetric fog
-	scene_color = scene_color * fog_transmittance + fog_scattering;
+#ifdef MINECRAFTY_CLOUDS
+	scene_color *= fog_scattering.a;
+#endif
+
+	scene_color = scene_color * fog_transmittance + fog_scattering.rgb;
 
 	bloomy_fog *= clamp01(dot(fog_transmittance, vec3(luminance_weights_rec2020)));
 #else

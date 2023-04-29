@@ -27,6 +27,7 @@ screen.clouds                          = Clouds
 screen.clouds_cumulus                  = Cumulus Clouds Settings
 screen.clouds_altocumulus              = Altocumulus Clouds Settings
 screen.clouds_cirrus                   = Planar Clouds Settings
+screen.clouds_minecrafty               = Minecraft-style Clouds Settings
 
 screen.fog_rlh                         = Rayleigh Coefficient
 screen.fog_mie                         = Mie Coefficient
@@ -77,6 +78,9 @@ option.GTAO                            = Shader AO
 option.VANILLA_AO                      = Vanilla AO
 option.AO_IN_SUNLIGHT                  = AO in Sunlight
 option.SH_SKYLIGHT                     = SH Skylight
+option.SSS_SHEEN                       = SSS Sheen
+option.SSS_INTENSITY                   = SSS Intensity
+option.SHADING_STRENGTH                = Shading Strength
 
 option.SHADOW                          = Shadow Mapping
 option.SHADOW_PCF                      = Shadow Filtering
@@ -177,6 +181,14 @@ option.CLOUDS_AC_WIND_SPEED            = Wind Speed
 suffix.CLOUDS_AC_ALTITUDE              = m/s
 option.CLOUDS_AC_WIND_ANGLE            = Wind Angle
 suffix.CLOUDS_AC_ALTITUDE              = °
+
+option.MINECRAFTY_CLOUDS               = Minecraft-style Clouds
+option.MINECRAFTY_CLOUDS_LAYER_2       = Second Layer
+option.MINECRAFTY_CLOUDS_THICKNESS     = Tallness
+option.MINECRAFTY_CLOUDS_ALTITUDE      = Altitude
+option.MINECRAFTY_CLOUDS_ALTITUDE_2    = Second Layer Altitude
+option.MINECRAFTY_CLOUDS_ROUNDNESS     = Roundness
+option.MINECRAFTY_CLOUDS_SHARPNESS     = Sharpness
 
 option.CLOUDS_TEMPORAL_UPSCALING       = Temporal Upscaling
 option.CLOUDS_DAILY_WEATHER            = Daily Weather Variation
@@ -285,6 +297,7 @@ option.POM_SHADOW                      = POM Self-Shadowing
 option.POM_SHADOW_SAMPLES              = POM Self-Shadow Samples
 option.POM_SLOPE_NORMALS               = POM Slope Normals
 option.POM_DISTANCE                    = POM Distance
+option.REFRACTION_INTENSITY_RP         = Refraction Intensity
 
 suffix.POM_DEPTH                       = m
 suffix.POM_DISTANCE                    = m
@@ -312,6 +325,7 @@ option.WATER_FOAM                      = Water Foam
 option.SNELLS_WINDOW                   = Snell's Window
 option.VANILLA_WATER_TEXTURE           = Vanilla Water Texture
 option.BIOME_WATER_COLOR               = Biome-Colored Water
+option.REFRACTION_INTENSITY_WATER      = Refraction Intensity
 
 option.WATER_WAVES                     = Enabled
 option.WATER_WAVE_ITERATIONS           = Iterations
