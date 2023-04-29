@@ -429,7 +429,7 @@ void main() {
 			material,
 			normal,
 			flat_normal,
-			shadows,
+			clamp01(shadows),
 			light_levels,
 			ao,
 			sss_depth,
