@@ -9,6 +9,8 @@
 #include "/include/utility/phase_functions.glsl"
 #include "/include/utility/random.glsl"
 
+// Minecraft-style volumetric clouds
+
 const float minecrafty_clouds_altitude_l0 = MINECRAFTY_CLOUDS_ALTITUDE;
 const float minecrafty_clouds_altitude_l1 = MINECRAFTY_CLOUDS_ALTITUDE_2;
 const float minecrafty_clouds_thickness   = MINECRAFTY_CLOUDS_THICKNESS;
@@ -27,18 +29,19 @@ float minecrafty_clouds_phase_multi(float cos_theta, vec3 g) { // Multiple scatt
 	     + 0.25 * henyey_greenstein_phase(cos_theta, -g.z); // backwards lobe
 }
 
-vec4 texture_soft(sampler2D sampler, vec2 coord, float softness) {
+float texture_soft(sampler2D sampler, vec2 coord, float softness) {
 	vec2 res = vec2(textureSize(sampler, 0));
 
 	coord = coord * res + 0.5;
 	vec2 i, f = modf(coord, i);
 
 	f = smoothstep(0.5 - softness, 0.5 + softness, f); // the closer the borders are to 0.5, the sharper the cloud edge
-	coord = i + f;
+	coord = i * rcp(res) + rcp(res);
 
-	coord = (coord - 0.5) / res;
+	vec4 samples = textureGather(sampler, coord, 3);
+	vec4 weights = vec4(f.y - f.x * f.y, f.x * f.y, f.x - f.x * f.y, 1.0 - f.x - f.y + f.x * f.y);
 
-	return texture(sampler, coord);
+	return dot(samples, weights);
 }
 
 float minecrafty_clouds_density(vec3 world_pos, float altitude_fraction, float layer_offset) {
@@ -48,16 +51,16 @@ float minecrafty_clouds_density(vec3 world_pos, float altitude_fraction, float l
 	const float roundness = 0.5 * MINECRAFTY_CLOUDS_ROUNDNESS; // Controls the roundness of the clouds
 	const float sharpness = 0.5 * MINECRAFTY_CLOUDS_SHARPNESS;  // Controls the sharpness of the cloud edges
 
-	// adjust position
+	// Adjust position
 
 	world_pos.xz  = abs(world_pos.xz + 3000.0 + layer_offset);
 	world_pos.xz += wind_velocity * world_age;
 
-	// minecraft cloud noise
+	// Minecraft cloud noise
 
-	float density  = texture_soft(depthtex2, world_pos.xz * 0.00009, roundness).x;
+	float density = texture_soft(depthtex2, world_pos.xz * 0.00018, roundness);
 
-	// adjust density
+	// Adjust density
 	density *= linear_step(0.0, roundness, altitude_fraction);
 	density *= linear_step(0.0, roundness, 1.0 - altitude_fraction);
 	density  = linear_step(sharpness, 1.0 - sharpness, density);
@@ -107,7 +110,7 @@ vec2 minecrafty_clouds_scattering(
 	float scatter_amount = minecrafty_clouds_scattering_coeff;
 	float extinct_amount = minecrafty_clouds_extinction_coeff;
 
-	float powder = 5.0 * (1.0 - exp2(-8.0 * density));
+	float powder = 4.0 * (1.0 - exp2(-8.0 * density));
 
 	float scattering_integral_times_density = (1.0 - step_transmittance) / minecrafty_clouds_extinction_coeff;
 

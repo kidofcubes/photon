@@ -132,8 +132,9 @@ flat in mat2x3 air_fog_coeff[2];
 
 uniform sampler2D noisetex;
 
+uniform sampler3D colortex0; // 3D worley noise
 uniform sampler2D colortex1; // gbuffer data
-uniform sampler3D colortex3; // 3D worley noise
+uniform sampler2D colortex3; // translucent color
 
 uniform sampler2D depthtex0;
 uniform sampler2D depthtex1;
@@ -218,14 +219,19 @@ void main() {
 	ivec2 fog_texel  = ivec2(gl_FragCoord.xy);
 	ivec2 view_texel = ivec2(gl_FragCoord.xy * taau_render_scale * rcp(VL_RENDER_SCALE));
 
-	float depth         = texelFetch(depthtex0, view_texel, 0).x;
+	float depth0        = texelFetch(depthtex0, view_texel, 0).x;
+	float depth1        = texelFetch(depthtex1, view_texel, 0).x;
 	vec4 gbuffer_data_0 = texelFetch(colortex1, view_texel, 0);
 
 	float skylight = unpack_unorm_2x8(gbuffer_data_0.w).y;
 
-	vec3 view_pos  = screen_to_view_space(vec3(uv, depth), true);
+	vec3 view_pos  = screen_to_view_space(vec3(uv, depth0), true);
 	vec3 scene_pos = view_to_scene_space(view_pos);
 	vec3 world_pos = scene_pos + cameraPosition;
+
+	vec3 view_back_pos  = screen_to_view_space(vec3(uv, depth1), true);
+	vec3 scene_back_pos = view_to_scene_space(view_back_pos);
+	vec3 world_back_pos = scene_back_pos + cameraPosition;
 
 	float dither = texelFetch(noisetex, fog_texel & 511, 0).b;
 	      dither = r1(frameCounter, dither);
@@ -238,15 +244,24 @@ void main() {
 	// Minecraft-style clouds
 
 #if defined WORLD_OVERWORLD && defined MINECRAFTY_CLOUDS
-	vec4 clouds = raymarch_minecrafty_clouds(world_start_pos, world_end_pos, depth == 1.0, minecrafty_clouds_altitude_l0, dither);
+	float alpha = texelFetch(colortex3, view_texel, 0).a;
+
+	vec3 clouds_start_pos = depth0 == depth1 ? world_start_pos : world_pos;
+	vec3 clouds_end_pos   = depth0 == depth1 ? world_end_pos : world_back_pos;
+
+	vec4 clouds = raymarch_minecrafty_clouds(world_start_pos, world_end_pos, depth1 == 1.0, minecrafty_clouds_altitude_l0, dither);
 	fog_scattering.rgb += clouds.xyz;
 	fog_scattering.a   *= clouds.a;
 
 #ifdef MINECRAFTY_CLOUDS_LAYER_2
-	clouds = raymarch_minecrafty_clouds(world_start_pos, world_end_pos, depth == 1.0, minecrafty_clouds_altitude_l1, dither);
-	fog_scattering.rgb += clouds.xyz * cube(fog_scattering.a);
-	fog_scattering.a   *= clouds.a;
+	float visibility = pow4(clouds.a);
+	clouds = raymarch_minecrafty_clouds(world_start_pos, world_end_pos, depth1 == 1.0, minecrafty_clouds_altitude_l1, dither);
+	fog_scattering.rgb += clouds.xyz * visibility;
+	fog_scattering.a   *= mix(1.0, clouds.a, visibility);
 #endif
+
+	fog_scattering.rgb *= 1.0 - alpha;
+	fog_scattering.a    = mix(fog_scattering.a, 1.0, alpha);
 #endif
 
 	// Volumetric lighting
@@ -255,18 +270,18 @@ void main() {
 	switch (isEyeInWater) {
 #if defined WORLD_OVERWORLD
 		case 0:
-			mat2x3 air_fog = raymarch_air_fog(world_start_pos, world_end_pos, depth == 1.0, skylight, dither);
+			mat2x3 air_fog = raymarch_air_fog(world_start_pos, world_end_pos, depth0 == 1.0, skylight, dither);
 
-			fog_scattering.rgb   += air_fog[0];
+			fog_scattering.rgb    = fog_scattering.rgb * air_fog[1] + air_fog[0];
 			fog_transmittance.rgb = air_fog[1];
 
 			break;
 #endif
 
 		case 1:
-			mat2x3 water_fog = raymarch_water_fog(world_start_pos, world_end_pos, depth == 1.0, dither);
+			mat2x3 water_fog = raymarch_water_fog(world_start_pos, world_end_pos, depth0 == 1.0, dither);
 
-			fog_scattering.rgb   += water_fog[0];
+			fog_scattering.rgb    = fog_scattering.rgb * water_fog[1] + water_fog[0];
 			fog_transmittance.rgb = water_fog[1];
 
 			break;
