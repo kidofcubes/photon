@@ -3,6 +3,7 @@
 
 #include "/include/utility/fast_math.glsl"
 
+
 #define SHADOW_DEPTH_SCALE 0.01
 // #define SHADOW_DEPTH_SCALE 0.2
 #define SHADOW_DISTORTION 0.85
@@ -44,7 +45,7 @@ vec3 get_shadow_bias(vec3 scene_pos, vec3 normal, float NoL, float skylight) {
 	// Fix light leaking in caves
 	vec3 edge_factor = 0.1 - 0.2 * fract(scene_pos + cameraPosition + normal * 0.01);
 
-	return bias + edge_factor * clamp01(1.0 - pow4(skylight));
+	return bias + edge_factor * clamp01(1.0 - skylight);
 }
 
 #endif // INCLUDE_LIGHT_DISTORTION

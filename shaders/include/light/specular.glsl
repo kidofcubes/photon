@@ -1,6 +1,8 @@
 #if !defined INCLUDE_LIGHT_SPECULAR
 #define INCLUDE_LIGHT_SPECULAR
 
+#include "/include/light/bsdf.glsl"
+#include "/include/misc/material.glsl"
 #include "/include/misc/raytracer.glsl"
 #include "/include/sky/projection.glsl"
 #include "/include/utility/bicubic.glsl"
@@ -68,6 +70,8 @@ vec3 get_specular_highlight(
 	const float specular_max_value = 4.0; // Maximum value imposed on specular highlight to prevent it from overloading bloom
 
 #if   defined WORLD_OVERWORLD
+	const float sun_angular_radius = SUN_ANGULAR_RADIUS * degree;
+	const float moon_angular_radius = MOON_ANGULAR_RADIUS * degree;
 	float light_radius = (sunAngle < 0.5) ? sun_angular_radius : moon_angular_radius;
 #else
 	const float light_radius = 1.0 * degree;
@@ -290,8 +294,11 @@ vec3 get_specular_reflections(
 		fresnel = fresnel_dielectric(NoV, material.f0.x);
 	}
 
+	float v1 = v1_smith_ggx(NoV, alpha_squared);
+	float v2 = v2_smith_ggx(NoL, NoV, alpha_squared);
+
 	vec3 reflection  = trace_specular_ray(screen_pos, view_pos, ray_dir, dither, skylight, SSR_INTERSECTION_STEPS_SMOOTH, SSR_REFINEMENT_STEPS, 0);
-	     reflection *= albedo_tint * fresnel;
+	     reflection *= albedo_tint * fresnel * (NoL * v2 / v1);
 
 	if (any(isnan(reflection))) reflection = vec3(0.0); // don't reflect NaNs
 

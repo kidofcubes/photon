@@ -21,6 +21,8 @@ struct Material {
 	bool is_hardcoded_metal;
 };
 
+const Material water_material = Material(vec3(0.0), vec3(0.0), vec3(0.02), vec3(0.0), 0.002, 1.0, 0.0, 0.0, 1.0, false, false);
+
 Material material_from(vec3 albedo_srgb, uint material_mask, vec3 world_pos, inout vec2 light_levels) {
 	vec3 block_pos = fract(world_pos);
 
@@ -83,10 +85,10 @@ Material material_from(vec3 albedo_srgb, uint material_mask, vec3 world_pos, ino
 					#ifdef HARDCODED_EMISSION
 					if (material_mask == 6u) {
 						// Ground torches
-						material.emission = 0.25 * sqrt(albedo_sqrt) * cube(linear_step(0.12, 0.45, block_pos.y));
+						material.emission = 0.5 * sqrt(albedo_sqrt) * cube(linear_step(0.12, 0.45, block_pos.y));
 					} else {
 						// Wall torches
-						material.emission = 0.25 * sqrt(albedo_sqrt) * cube(linear_step(0.35, 0.6, block_pos.y));
+						material.emission = 0.5 * sqrt(albedo_sqrt) * cube(linear_step(0.35, 0.6, block_pos.y));
 					}
 					material.emission  = max(material.emission, 0.85 * albedo_sqrt * step(0.5, 0.2 * hsl.y + 0.55 * hsl.z));
 					material.emission *= light_levels.x;
@@ -100,11 +102,8 @@ Material material_from(vec3 albedo_srgb, uint material_mask, vec3 world_pos, ino
 					if (material_mask == 8u) {
 						#ifdef HARDCODED_EMISSION
 						// Lava
-						material.emission = 2.00 * albedo_sqrt * (0.2 + 0.8 * isolate_hue(hsl, 30.0, 15.0));
+						material.emission = vec3(0.8) * (0.2 + 0.8 * isolate_hue(hsl, 30.0, 15.0));
 						light_levels.x *= 0.3;
-						#ifdef WORLD_NETHER
-						material.emission *= 0.66;
-						#endif
 						#endif
 					} else {
 						#ifdef HARDCODED_EMISSION
@@ -385,5 +384,15 @@ void decode_specular_map(vec4 specular_map, inout Material material) {
 	material.ssr_multiplier = step(0.01, (material.f0.x - material.f0.x * material.roughness * SSR_ROUGHNESS_THRESHOLD)); // based on Kneemund's method
 }
 #endif
+
+void decode_specular_map(vec4 specular_map, inout Material material, out bool parallax_shadow) {
+#if defined POM && defined POM_SHADOW
+		// Specular map alpha >= 0.5 => parallax shadow
+		parallax_shadow = specular_map.a >= 0.5;
+		specular_map.a = fract(specular_map.a * 2.0);
+#endif
+
+		decode_specular_map(specular_map, material);
+}
 
 #endif // INCLUDE_MISC_MATERIAL

@@ -4,7 +4,7 @@
   Photon Shaders by SixthSurge
 
   program/gbuffers/armor_glint.glsl:
-  Handle enchantment glint (+ block breaking overlay in OptiFine)
+  Handle enchantment glint
 
 --------------------------------------------------------------------------------
 */
@@ -70,9 +70,10 @@ void main() {
 //----------------------------------------------------------------------------//
 #if defined fsh
 
-layout (location = 3) out vec4 armor_glint;
+layout (location = 0) out vec3 colortex0_out;
+layout (location = 1) out vec4 colortex3_out;
 
-/* DRAWBUFFERS:3 */
+/* DRAWBUFFERS:03 */
 
 in vec2 uv;
 
@@ -87,18 +88,22 @@ uniform vec2 view_pixel_size;
 
 const float lod_bias = log2(taau_render_scale);
 
+#include "/include/utility/color.glsl"
+
 void main() {
 #if defined TAA && defined TAAU
 	vec2 coord = gl_FragCoord.xy * view_pixel_size * rcp(taau_render_scale);
 	if (clamp01(coord) != coord) discard;
 #endif
 
-	armor_glint = texture(gtexture, uv, lod_bias);
-	if (armor_glint.a < 0.1) discard;
+	vec3 armor_glint = texture(gtexture, uv, lod_bias).rgb;
+
+	colortex0_out = srgb_eotf_inv(armor_glint) * rec709_to_working_color;
 
 	// Old overlay handling
 	// alpha of 0 <=> enchantment glint
-	armor_glint.a = 0.0 / 255.0;
+	colortex3_out.rgb = armor_glint;
+	colortex3_out.a = 0.0 / 255.0;
 }
 
 #endif

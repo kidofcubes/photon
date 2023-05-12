@@ -8,13 +8,14 @@
 #include "/include/light/colors/weather_color.glsl"
 #include "/include/light/bsdf.glsl"
 #include "/include/sky/atmosphere.glsl"
+#include "/include/sky/projection.glsl"
 #include "/include/utility/dithering.glsl"
 #include "/include/utility/fast_math.glsl"
 #include "/include/utility/geometry.glsl"
 #include "/include/utility/random.glsl"
 
 const float sun_luminance  = 40.0; // luminance of sun disk
-const float moon_luminance = 4.0; // luminance of sun disk
+const float moon_luminance = 4.0; // luminance of moon disk
 
 vec3 draw_sun(vec3 ray_dir) {
 	float nu = dot(ray_dir, sun_dir);
@@ -86,13 +87,16 @@ vec3 draw_stars(vec3 ray_dir) {
 
 vec4 get_clouds(vec3 ray_dir, vec3 clear_sky) {
 #if   defined PROGRAM_DEFERRED0
-	float dither = interleaved_gradient_noise(gl_FragCoord.xy);
+	ivec2 texel   = ivec2(gl_FragCoord.xy);
+	      texel.x = texel.x % (sky_map_res.x - 4);
+
+	float dither = interleaved_gradient_noise(vec2(texel));
 
 	return draw_clouds(ray_dir, clear_sky, dither);
 #elif defined PROGRAM_DEFERRED3
 	// Soften clouds for new pixels
 	float pixel_age = texelFetch(colortex6, ivec2(gl_FragCoord.xy), 0).w;
-	int ld = int(max0(3.0 - 0.5 * pixel_age));
+	int ld = int(3.0 * dampen(max0(1.0 - 0.1 * pixel_age)));
 
 	return bicubic_filter_lod(colortex7, uv * taau_render_scale, ld);
 #else
@@ -147,7 +151,7 @@ vec3 draw_sky(vec3 ray_dir, vec3 atmosphere) {
 
 	// Clouds
 
-#ifndef MINECRAFTY_CLOUDS
+#ifndef BLOCKY_CLOUDS
 	vec4 clouds = get_clouds(ray_dir, sky);
 	sky *= clouds.a;   // transmittance
 	sky += clouds.rgb; // scattering

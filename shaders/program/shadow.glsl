@@ -21,8 +21,6 @@ flat out vec3 tint;
 
 #ifdef WATER_CAUSTICS
 out vec3 scene_pos;
-
-flat out mat3 tbn;
 #endif
 
 // --------------
@@ -80,10 +78,6 @@ void main() {
 		 pos = pos - cameraPosition;
 
 #ifdef WATER_CAUSTICS
-	tbn[0] = mat3(shadowModelViewInverse) * normalize(gl_NormalMatrix * at_tangent.xyz);
-	tbn[2] = mat3(shadowModelViewInverse) * normalize(gl_NormalMatrix * gl_Normal);
-	tbn[1] = cross(tbn[0], tbn[2]) * sign(at_tangent.w);
-
 	scene_pos = pos;
 #endif
 
@@ -114,8 +108,6 @@ flat in vec3 tint;
 
 #ifdef WATER_CAUSTICS
 in vec3 scene_pos;
-
-flat in mat3 tbn;
 #endif
 
 // ------------
@@ -125,10 +117,16 @@ flat in mat3 tbn;
 uniform sampler2D tex;
 uniform sampler2D noisetex;
 
+#ifdef SHADOW_COLOR
+uniform sampler2D shadowtex1;
+#endif
+
 uniform mat4 gbufferModelView;
 uniform mat4 gbufferModelViewInverse;
 uniform mat4 gbufferProjection;
 uniform mat4 gbufferProjectionInverse;
+
+uniform mat4 shadowProjectionInverse;
 
 uniform vec3 cameraPosition;
 
@@ -146,11 +144,12 @@ uniform vec3 light_dir;
 
 const float air_n = 1.000293; // for 0°C and 1 atm
 const float water_n = 1.333;  // for 20°C
-const float distance_through_water = 5.0;
 
 const vec3 water_absorption_coeff = vec3(WATER_ABSORPTION_R, WATER_ABSORPTION_G, WATER_ABSORPTION_B) * rec709_to_working_color;
 const vec3 water_scattering_coeff = vec3(WATER_SCATTERING);
 const vec3 water_extinction_coeff = water_absorption_coeff + water_scattering_coeff;
+
+const float distance_through_water = 5.0; // m
 
 // using the built-in GLSL refract() seems to cause NaNs on Intel drivers, but with this
 // function, which does the exact same thing, it's fine
@@ -164,16 +163,39 @@ vec3 refract_safe(vec3 I, vec3 N, float eta) {
 	}
 }
 
+vec3 biome_water_coeff(vec3 biome_water_color) {
+	const float density_scale = 0.15;
+	const float biome_color_contribution = 0.33;
+
+	const vec3 base_absorption_coeff = vec3(WATER_ABSORPTION_R, WATER_ABSORPTION_G, WATER_ABSORPTION_B) * rec709_to_working_color;
+	const vec3 forest_absorption_coeff = -density_scale * log(vec3(0.1245, 0.1797, 0.7108));
+
+#ifdef BIOME_WATER_COLOR
+	vec3 biome_absorption_coeff = -density_scale * log(biome_water_color + eps) - forest_absorption_coeff;
+
+	return max0(base_absorption_coeff + biome_absorption_coeff * biome_color_contribution);
+#else
+	return base_absorption_coeff;
+#endif
+}
+
 float get_water_caustics() {
 #ifndef WATER_CAUSTICS
 	return 1.0;
 #else
+	// TBN matrix for a face pointing directly upwards
+	const mat3 tbn = mat3(
+		1.0, 0.0, 0.0,
+		0.0, 0.0, 1.0,
+		0.0, 1.0, 0.0
+	);
+
+	const bool flowing_water = false;
+	const vec2 flow_dir = vec2(0.0);
+
 	vec3 world_pos = scene_pos + cameraPosition;
+
 	vec2 coord = world_pos.xz;
-
-	bool flowing_water = abs(tbn[2].y) < 0.99;
-	vec2 flow_dir = flowing_water ? normalize(tbn[2].xz) : vec2(0.0);
-
 	vec3 normal = tbn * get_water_normal(world_pos, tbn[2], coord, flow_dir, 1.0, flowing_water);
 
 	vec3 old_pos = world_pos;
@@ -184,14 +206,17 @@ float get_water_caustics() {
 
 	if (old_area == 0.0 || new_area == 0.0) return 1.0;
 
-	return inversesqrt(old_area / new_area);
+	return 0.25 * inversesqrt(old_area / new_area);
 #endif
 }
 
 void main() {
 #ifdef SHADOW_COLOR
 	if (material_mask == 1) { // Water
-		shadowcolor0_out = clamp01(0.25 * exp(-water_extinction_coeff * distance_through_water) * get_water_caustics());
+		vec3 biome_water_color = srgb_eotf_inv(tint) * rec709_to_working_color;
+		vec3 absorption_coeff = biome_water_coeff(biome_water_color);
+
+		shadowcolor0_out = clamp01(0.25 * exp(-absorption_coeff * distance_through_water) * get_water_caustics());
 	} else {
 		vec4 base_color = textureLod(tex, uv, 0);
 		if (base_color.a < 0.1) discard;
