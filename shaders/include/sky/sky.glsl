@@ -36,7 +36,8 @@ vec3 unstable_star_field(vec2 coord, float star_threshold) {
 
 	vec4 noise = hash4(coord);
 
-	float star = linear_step(star_threshold, 1.0, noise.x);
+	float star = round(linear_step(star_threshold, 1.0, noise.x));
+// 	float star = step(star_threshold, noise.x);
 	      star = pow4(star) * STARS_INTENSITY;
 
 	float temp = mix(min_temp, max_temp, noise.y);
@@ -59,10 +60,11 @@ vec3 stable_star_field(vec2 coord, float star_threshold) {
 	f.x = cubic_smooth(f.x);
 	f.y = cubic_smooth(f.y);
 
-	return unstable_star_field(i + vec2(0.0, 0.0), star_threshold) * (1.0 - f.x) * (1.0 - f.y)
-	     + unstable_star_field(i + vec2(1.0, 0.0), star_threshold) * f.x * (1.0 - f.y)
-	     + unstable_star_field(i + vec2(0.0, 1.0), star_threshold) * f.y * (1.0 - f.x)
-	     + unstable_star_field(i + vec2(1.0, 1.0), star_threshold) * f.x * f.y;
+// 	return unstable_star_field(i + vec2(0.0, 0.0), star_threshold) * (1.0 - f.x) * (1.0 - f.y)
+// 	     + unstable_star_field(i + vec2(1.0, 0.0), star_threshold) * f.x * (1.0 - f.y)
+// 	     + unstable_star_field(i + vec2(0.0, 1.0), star_threshold) * f.y * (1.0 - f.x)
+// 	     + unstable_star_field(i + vec2(1.0, 1.0), star_threshold) * f.x * f.y;
+	return unstable_star_field(i + vec2(0.0, 0.0), star_threshold);
 }
 
 vec3 draw_stars(vec3 ray_dir) {
