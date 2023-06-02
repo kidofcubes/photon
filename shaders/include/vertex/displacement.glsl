@@ -41,8 +41,12 @@ float get_water_displacement(vec3 world_pos, float skylight) {
 vec3 get_wind_displacement(vec3 world_pos, float wind_speed, float wind_strength, bool is_tall_plant_top_vertex) {
 	const float wind_angle = 30.0 * degree;
 	const vec2  wind_dir   = vec2(cos(wind_angle), sin(wind_angle));
-
-	float t = wind_speed * frameTimeCounter;
+	float t = wind_speed;
+	if( mod(frameTimeCounter,20.0)>10.0 ){
+		t *= 20.0-mod(frameTimeCounter,20.0);
+	}else{
+		t *= mod(frameTimeCounter,20.0);
+	}
 
 	float gust_amount  = texture(noisetex, 0.05 * (world_pos.xz + wind_dir * t)).y;
 	      gust_amount *= gust_amount;
