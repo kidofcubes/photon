@@ -59,10 +59,14 @@ vec3 stable_star_field(vec2 coord, float star_threshold) {
 	f.x = cubic_smooth(f.x);
 	f.y = cubic_smooth(f.y);
 
+#ifdef STARS_SHARP
+	return unstable_star_field(i + vec2(0.0, 0.0), star_threshold);
+#else
 	return unstable_star_field(i + vec2(0.0, 0.0), star_threshold) * (1.0 - f.x) * (1.0 - f.y)
 	     + unstable_star_field(i + vec2(1.0, 0.0), star_threshold) * f.x * (1.0 - f.y)
 	     + unstable_star_field(i + vec2(0.0, 1.0), star_threshold) * f.y * (1.0 - f.x)
 	     + unstable_star_field(i + vec2(1.0, 1.0), star_threshold) * f.x * f.y;
+#endif
 }
 
 vec3 draw_stars(vec3 ray_dir) {

@@ -157,6 +157,7 @@ option.SKY_GROUND                      = Sky Ground
 option.STARS                           = Stars
 option.STARS_INTENSITY                 = Stars Intensity
 option.STARS_COVERAGE                  = Stars Coverage
+option.STARS_SHARP                     = Sharp Stars
 
 # Clouds
 option.CLOUDS_CU                       = Cumulus Clouds
