@@ -441,7 +441,7 @@ void main() {
 			scene_pos,
 			normal,
 			flat_normal,
-			clamp01(shadows),
+			shadows,
 			light_levels,
 			ao,
 			sss_depth,

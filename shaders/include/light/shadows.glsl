@@ -12,8 +12,8 @@
 #define SHADOW_PCF_STEPS_MIN           6 // [4 6 8 12 16 18 20 22 24 26 28 30 32]
 #define SHADOW_PCF_STEPS_MAX          12 // [4 6 8 12 16 18 20 22 24 26 28 30 32]
 #define SHADOW_PCF_STEPS_SCALE       1.0 // [0.0 0.2 0.4 0.6 0.8 1.0 1.2 1.4 1.6 1.8 2.0]
-#define SHADOW_BLOCKER_SEARCH_STEPS    15 // [3 6 9 12 15]
-#define SHADOW_BLOCKER_SEARCH_RADIUS 10.0 // [0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0]
+#define SHADOW_BLOCKER_SEARCH_STEPS    6 // [3 6 9 12 15]
+#define SHADOW_BLOCKER_SEARCH_RADIUS 0.5 // [0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0]
 
 const int shadow_map_res = int(float(shadowMapResolution) * MC_SHADOW_QUALITY);
 const float shadow_map_pixel_size = rcp(float(shadow_map_res));
@@ -221,7 +221,7 @@ vec3 calculate_shadows(
 
 	distance_fade = pow32(max(
 		max_of(abs(shadow_screen_pos.xy * 2.0 - 1.0)),
-		mix(1.0, 0.55, linear_step(0.33, 0.8, light_dir.y + 10)) * length_squared(scene_pos) * rcp(shadowDistance * shadowDistance))
+		mix(1.0, 0.55, linear_step(0.33, 0.8, light_dir.y)) * length_squared(scene_pos) * rcp(shadowDistance * shadowDistance))
 	);
 
 #ifdef SSRT_DISTANT_SHADOWS
