@@ -80,6 +80,10 @@ uniform int entityId;
 uniform int blockEntityId;
 #endif
 
+#if (defined PROGRAM_GBUFFERS_ENTITIES_TRANSLUCENT || defined PROGRAM_GBUFFERS_HAND_WATER) && defined IS_IRIS
+uniform int currentRenderedItemId;
+#endif
+
 #include "/include/utility/space_conversion.glsl"
 #include "/include/vertex/displacement.glsl"
 #include "/include/vertex/utility.glsl"
@@ -105,7 +109,7 @@ void main() {
 #if defined PROGRAM_GBUFFERS_WATER
 	tint.a = 1.0;
 
-	if (material_mask == 251) {
+	if (material_mask == 62) {
 		// Nether portal
 		tangent_pos = (scene_pos - gbufferModelViewInverse[3].xyz) * tbn;
 
@@ -124,7 +128,7 @@ void main() {
 
 #if defined PROGRAM_GBUFFERS_TEXTURED && !defined IS_IRIS
 	// Make enderman/nether portal particles glow
-	if (gl_Color.r > gl_Color.g && gl_Color.g < 0.6 && gl_Color.b > 0.4) material_mask = 14;
+	if (gl_Color.r > gl_Color.g && gl_Color.g < 0.6 && gl_Color.b > 0.4) material_mask = 47;
 #endif
 
 	vec3 view_pos = scene_to_view_space(scene_pos);
@@ -196,6 +200,11 @@ uniform sampler2D depthtex1;
 uniform sampler2D shadowtex0;
 uniform sampler2DShadow shadowtex1;
 #endif
+#endif
+
+#ifdef COLORED_LIGHTS
+uniform sampler3D light_sampler_a;
+uniform sampler3D light_sampler_b;
 #endif
 
 uniform mat4 gbufferModelView;
@@ -344,7 +353,7 @@ vec4 draw_nether_portal() {
 		pos += ray_step;
 	}
 
-	return clamp01(result * portal_brightness * depth_step * vec4(1.0, 0.75, 0.8, 1.0));
+	return clamp01(result * portal_brightness * depth_step);
 }
 #else
 vec4 draw_nether_portal() { return vec4(0.0); }
@@ -378,7 +387,7 @@ void main() {
 	vec3 normal = tbn[2];
 
 	bool is_water         = material_mask == 1;
-	bool is_nether_portal = material_mask == 251;
+	bool is_nether_portal = material_mask == 62;
 
 	vec2 adjusted_light_levels = light_levels;
 
@@ -511,6 +520,7 @@ void main() {
 
 	vec3 radiance = get_diffuse_lighting(
 		material,
+		scene_pos,
 		normal,
 		tbn[2],
 		shadows,
@@ -555,8 +565,8 @@ void main() {
 			sss_depth
 		);
 
-		radiance += water_fog[0] * (1.0 + 6.6 * sqr(water_fog[1])) * (1.0 - exp(-0.33 * layer_dist));
-		alpha     = 1.0 - dot(water_fog[1], luminance_weights_rec2020);
+		radiance += water_fog[0] * (1.0 + 6.0 * sqr(water_fog[1])) * (1.0 - exp(-0.33 * layer_dist));
+		alpha     = 1.0 - water_fog[1].x;
 	} else {
 		alpha     = base_color.a;
 	}

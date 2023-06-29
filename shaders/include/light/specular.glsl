@@ -105,8 +105,10 @@ vec3 get_specular_highlight(
 // ------------------------
 
 #ifdef PROGRAM_COMPOSITE1
-// from https://jcgt.org/published/0007/04/01/paper.pdf: "Sampling the GGX distribution of visible normals"
 vec3 sample_ggx_vndf(vec3 viewer_dir, vec2 alpha, vec2 hash) {
+/*
+	// from https://jcgt.org/published/0007/04/01/paper.pdf: "Sampling the GGX distribution of visible normals"
+
 	// Section 3.2: transforming the view direction to the hemisphere configuration
 	viewer_dir = normalize(vec3(alpha * viewer_dir.xy, viewer_dir.z));
 
@@ -131,6 +133,28 @@ vec3 sample_ggx_vndf(vec3 viewer_dir, vec2 alpha, vec2 hash) {
 	normal = normalize(vec3(alpha * normal.xy, max0(normal.z)));
 
 	return normal;
+/*/
+	// Improved GGX importance sampling function by zombye
+	// https://ggx-research.github.io/publication/2023/06/09/publication-ggx.html
+
+    // Transform viewer direction to the hemisphere configuration
+    viewer_dir = normalize(vec3(alpha * viewer_dir.xy, viewer_dir.z));
+
+    // Sample a reflection direction off the hemisphere
+    const float tau = 6.2831853; // 2 * pi
+    float phi = tau * hash.x;
+    float cos_theta = fma(1.0 - hash.y, 1.0 + viewer_dir.z, -viewer_dir.z);
+    float sin_theta = sqrt(clamp(1.0 - cos_theta * cos_theta, 0.0, 1.0));
+    vec3 reflected = vec3(vec2(cos(phi), sin(phi)) * sin_theta, cos_theta);
+
+    // Evaluate halfway direction
+    // This gives the normal on the hemisphere
+    vec3 halfway = reflected + viewer_dir;
+
+    // Transform the halfway direction back to hemiellispoid configuation
+    // This gives the final sampled normal
+    return normalize(vec3(alpha * halfway.xy, halfway.z));
+//*/
 }
 
 vec3 get_sky_reflection(vec3 ray_dir, float skylight) {
@@ -215,6 +239,7 @@ vec3 get_specular_reflections(
 	vec3 screen_pos,
 	vec3 view_pos,
 	vec3 normal,
+	vec3 flat_normal,
 	vec3 world_dir,
 	vec3 tangent_dir,
 	float skylight
@@ -226,8 +251,6 @@ vec3 get_specular_reflections(
 	float dither = r1(frameCounter, texelFetch(noisetex, ivec2(gl_FragCoord.xy) & 511, 0).b);
 
 #if defined SSR_ROUGHNESS_SUPPORT && defined SPECULAR_MAPPING
-	const float specular_bias = 0.25;
-
 	if (material.roughness > 5e-2) { // Rough reflection
 	 	float mip_level = 8.0 * dampen(material.roughness);
 
@@ -238,7 +261,7 @@ vec3 get_specular_reflections(
 			hash.x = interleaved_gradient_noise(gl_FragCoord.xy,                    frameCounter * SSR_RAY_COUNT + i);
 			hash.y = interleaved_gradient_noise(gl_FragCoord.xy + vec2(97.0, 23.0), frameCounter * SSR_RAY_COUNT + i);
 
-			vec3 microfacet_normal = tbn_matrix * sample_ggx_vndf(-tangent_dir, vec2(material.roughness), hash * vec2(1.0, 1.0 - specular_bias));
+			vec3 microfacet_normal = tbn_matrix * sample_ggx_vndf(-tangent_dir, vec2(material.roughness), hash);
 			vec3 ray_dir = reflect(world_dir, microfacet_normal);
 
 			float NoL = dot(normal, ray_dir);
@@ -246,7 +269,7 @@ vec3 get_specular_reflections(
 
 			vec3 radiance = trace_specular_ray(screen_pos, view_pos, ray_dir, dither, skylight, SSR_INTERSECTION_STEPS_ROUGH, SSR_REFINEMENT_STEPS, int(mip_level));
 
-			float NoV = max(1e-2, dot(normal, -world_dir));
+			float NoV = max(1e-2, dot(flat_normal, -world_dir));
 			float MoV = max(1e-2, dot(microfacet_normal, -world_dir));
 
 			vec3 fresnel;
@@ -298,7 +321,7 @@ vec3 get_specular_reflections(
 	float v2 = v2_smith_ggx(NoL, NoV, alpha_squared);
 
 	vec3 reflection  = trace_specular_ray(screen_pos, view_pos, ray_dir, dither, skylight, SSR_INTERSECTION_STEPS_SMOOTH, SSR_REFINEMENT_STEPS, 0);
-	     reflection *= albedo_tint * fresnel * (NoL * v2 / v1);
+	     reflection *= albedo_tint * fresnel;
 
 	if (any(isnan(reflection))) reflection = vec3(0.0); // don't reflect NaNs
 

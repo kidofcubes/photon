@@ -16,6 +16,7 @@ screen.water                           = Water
 screen.post                            = Post-Processing
 screen.misc                            = Misc
 
+screen.colored_lights                  = Colored Lights Settings
 screen.rp_settings                     = Resource Pack Settings
 screen.reflections                     = Reflections
 screen.light_sources                   = Light Sources
@@ -79,6 +80,9 @@ option.EDGE_HIGHLIGHT_SCALE            = Edge Highlight Scale
 
 # Lighting settings
 
+option.COLORED_LIGHTS                  = Colored Lights
+option.HANDHELD_LIGHTING               = Handheld Lighting
+option.HANDHELD_LIGHTING_INTENSITY     = Handheld Lighting Intensity
 option.GTAO                            = Shader AO
 option.VANILLA_AO                      = Vanilla AO
 option.AO_IN_SUNLIGHT                  = AO in Sunlight
@@ -123,6 +127,9 @@ option.BLOCKLIGHT_R                    = Red
 option.BLOCKLIGHT_G                    = Green
 option.BLOCKLIGHT_B                    = Blue
 option.BLOCKLIGHT_I                    = Blocklight Intensity
+
+option.VOXEL_VOLUME_SIZE               = Voxel Volume Size
+suffix.VOXEL_VOLUME_SIZE               = m
 
 suffix.shadowMapResolution             = ²
 suffix.sunPathRotation                 = °
@@ -206,6 +213,7 @@ option.BLOCKY_CLOUDS_SHARPNESS         = Sharpness
 
 option.CLOUDS_TEMPORAL_UPSCALING       = Temporal Upscaling
 option.CLOUDS_DAILY_WEATHER            = Daily Weather Variation
+option.CLOUDS_AERIAL_PERSPECTIVE_BOOST = Aerial Perspective Boost
 value.CLOUDS_TEMPORAL_UPSCALING.1      = Off
 value.CLOUDS_TEMPORAL_UPSCALING.2      = 4×
 value.CLOUDS_TEMPORAL_UPSCALING.3      = 9×
@@ -386,7 +394,6 @@ option.tonemap                         = Tonemap Operator
 
 value.tonemap.academy_fit              = Academy Fit
 value.tonemap.academy_rrt              = Academy RRT
-value.tonemap.tony_mcmapface           = Tony McMapface
 value.tonemap.tonemap_hejl_2015        = Hejl 2015
 value.tonemap.tonemap_hejl_burgess     = Hejl-Burgess
 value.tonemap.tonemap_lottes           = Lottes
@@ -448,7 +455,6 @@ value.DEBUG_VIEW.DEBUG_VIEW_HISTOGRAM  = Histogram
 
 value.tonemap_left.academy_fit            = Academy Fit
 value.tonemap_left.academy_rrt            = Academy RRT
-value.tonemap_left.tony_mcmapface         = Tony McMapface
 value.tonemap_left.tonemap_lottes         = Lottes
 value.tonemap_left.tonemap_hejl_2015      = Hejl 2015
 value.tonemap_left.tonemap_hejl_burgess   = Hejl-Burgess
@@ -460,7 +466,6 @@ value.tonemap_left.tonemap_reinhard_jodie = Reinhard-Jodie
 
 value.tonemap_right.academy_fit            = Academy Fit
 value.tonemap_right.academy_rrt            = Academy RRT
-value.tonemap_right.tony_mcmapface         = Tony McMapface
 value.tonemap_right.tonemap_lottes         = Lottes
 value.tonemap_right.tonemap_hejl_burgess   = Hejl-Burgess
 value.tonemap_right.tonemap_hejl_2015      = Hejl 2015
