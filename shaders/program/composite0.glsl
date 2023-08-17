@@ -71,6 +71,11 @@ void main() {
 	mat2x3 rayleigh_coeff = air_fog_rayleigh_coeff(), mie_coeff = air_fog_mie_coeff();
 	air_fog_coeff[0] = mat2x3(rayleigh_coeff[0], mie_coeff[0]);
 	air_fog_coeff[1] = mat2x3(rayleigh_coeff[1], mie_coeff[1]);
+
+	#if defined OVERCAST_SKY_AFFECTS_LIGHTING
+	float overcastness = daily_weather_blend(daily_weather_overcastness);
+	light_color *= 1.0 - 0.5 * overcastness;
+	#endif
 #endif
 
 	vec2 vertex_pos = gl_Vertex.xy * VL_RENDER_SCALE;
@@ -108,11 +113,12 @@ uniform sampler2D noisetex;
 uniform sampler3D colortex0; // 3D worley noise
 uniform sampler2D colortex1; // gbuffer data
 uniform sampler2D colortex3; // translucent color
+uniform sampler2D colortex4; // sky map
 
 uniform sampler2D depthtex0;
 uniform sampler2D depthtex1;
 
-#ifdef WORLD_OVERWORLD
+#ifndef WORLD_NETHER
 #ifdef SHADOW
 uniform sampler2D shadowtex0;
 uniform sampler2D shadowtex1;
@@ -160,6 +166,7 @@ uniform vec2 view_pixel_size;
 uniform vec2 taa_offset;
 
 uniform float eye_skylight;
+uniform float desert_sandstorm;
 
 uniform float time_sunrise;
 uniform float time_noon;
@@ -172,6 +179,10 @@ uniform float time_midnight;
 
 #if defined WORLD_OVERWORLD
 #include "/include/fog/air_fog_vl.glsl"
+#endif
+
+#if defined WORLD_END
+#include "/include/fog/end_fog_vl.glsl"
 #endif
 
 #include "/include/fog/water_fog_vl.glsl"
@@ -208,15 +219,19 @@ void main() {
 
 #if defined VL
 	switch (isEyeInWater) {
-#if defined WORLD_OVERWORLD
 		case 0:
-			mat2x3 air_fog = raymarch_air_fog(world_start_pos, world_end_pos, depth0 == 1.0, skylight, dither);
+			#if defined WORLD_OVERWORLD
+			mat2x3 fog = raymarch_air_fog(world_start_pos, world_end_pos, depth0 == 1.0, skylight, dither);
+			#elif defined WORLD_NETHER
+			mat2x3 fog = mat2x3(vec3(0.0), vec3(1.0));
+			#elif defined WORLD_END
+			mat2x3 fog = raymarch_end_fog(world_start_pos, world_end_pos, depth0 == 1.0, dither);
+			#endif
 
-			fog_scattering    = air_fog[0];
-			fog_transmittance = air_fog[1];
+			fog_scattering    = fog[0];
+			fog_transmittance = fog[1];
 
 			break;
-#endif
 
 		case 1:
 			mat2x3 water_fog = raymarch_water_fog(world_start_pos, world_end_pos, depth0 == 1.0, dither);

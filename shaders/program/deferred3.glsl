@@ -29,8 +29,11 @@ flat out vec3 sky_sh[9];
 #else
 flat out mat3 sky_samples;
 #endif
-#endif
 
+#if defined OVERCAST_SKY_AFFECTS_LIGHTING
+flat out float overcastness;
+#endif
+#endif
 
 // ------------
 //   Uniforms
@@ -62,6 +65,7 @@ uniform vec3 moon_dir;
 uniform float biome_cave;
 uniform float biome_may_rain;
 uniform float biome_may_snow;
+uniform float biome_snowy;
 
 uniform float time_sunrise;
 uniform float time_noon;
@@ -73,6 +77,7 @@ uniform float time_midnight;
 // ------------
 
 #define ATMOSPHERE_SCATTERING_LUT depthtex0
+#define WEATHER_AURORA
 
 #if defined WORLD_OVERWORLD
 #include "/include/light/colors/light_color.glsl"
@@ -94,6 +99,12 @@ void main() {
 #if defined WORLD_OVERWORLD
 	sun_color    = get_sun_exposure() * get_sun_tint();
 	moon_color   = get_moon_exposure() * get_moon_tint();
+
+#if defined OVERCAST_SKY_AFFECTS_LIGHTING
+	overcastness = texelFetch(colortex4, ivec2(191, 2), 0).x;
+#else
+	float overcastness = 0.0;
+#endif
 
 	float skylight_boost = get_skylight_boost();
 
@@ -122,6 +133,18 @@ void main() {
 	sky_samples[0] = atmosphere_scattering(dir0, sun_color, sun_dir, moon_color, moon_dir) * skylight_boost;
 	sky_samples[1] = atmosphere_scattering(dir1, sun_color, sun_dir, moon_color, moon_dir) * skylight_boost;
 	sky_samples[2] = atmosphere_scattering(dir2, sun_color, sun_dir, moon_color, moon_dir) * skylight_boost;
+
+	#ifdef OVERCAST_SKY_AFFECTS_LIGHTING
+	sky_samples[0] = mix(sky_samples[0], sky_samples[0] * 1.5 + 0.015 * light_color, overcastness);
+	sky_samples[1] = mix(sky_samples[1], sky_samples[1] * 1.25, overcastness);
+	sky_samples[2] = mix(sky_samples[2], sky_samples[2] * 1.25, overcastness);
+	#endif
+
+	// Aurorae
+	float aurora_amount = get_aurora_amount();
+	mat2x3 aurora_colors = get_aurora_colors();
+
+	sky_samples[0] += aurora_amount * AURORA_GROUND_LIGHTING * mix(aurora_colors[0], aurora_colors[1], 0.25) * (1.0 - overcastness);
 	#endif
 #endif
 
@@ -155,6 +178,10 @@ flat in vec3 sky_sh[9];
 #else
 flat in mat3 sky_samples;
 #endif
+
+#if defined OVERCAST_SKY_AFFECTS_LIGHTING
+flat in float overcastness;
+#endif
 #endif
 
 // ------------
@@ -170,6 +197,10 @@ uniform sampler2D colortex4; // sky map
 uniform sampler2D colortex6; // ambient occlusion
 uniform sampler2D colortex7; // clouds
 
+#ifdef CLOUD_SHADOWS
+uniform sampler2D colortex8; // cloud shadow map
+#endif
+
 uniform sampler3D depthtex0; // atmosphere scattering LUT
 uniform sampler2D depthtex1;
 
@@ -177,19 +208,20 @@ uniform sampler2D depthtex1;
 uniform sampler2D depthtex2; // minecraft cloud texture
 #endif
 
-#ifdef WORLD_OVERWORLD
+#ifdef COLORED_LIGHTS
+uniform sampler3D light_sampler_a;
+uniform sampler3D light_sampler_b;
+#endif
+
+#ifndef WORLD_NETHER
 #ifdef SHADOW
 uniform sampler2D shadowtex0;
 uniform sampler2DShadow shadowtex1;
+
 #ifdef SHADOW_COLOR
 uniform sampler2D shadowcolor0;
 #endif
 #endif
-#endif
-
-#ifdef COLORED_LIGHTS
-uniform sampler3D light_sampler_a;
-uniform sampler3D light_sampler_b;
 #endif
 
 uniform mat4 gbufferModelView;
@@ -248,9 +280,9 @@ uniform float time_midnight;
 #define ATMOSPHERE_SCATTERING_LUT depthtex0
 
 #include "/include/fog/simple_fog.glsl"
-#include "/include/light/diffuse.glsl"
+#include "/include/light/diffuse_lighting.glsl"
 #include "/include/light/shadows.glsl"
-#include "/include/light/specular.glsl"
+#include "/include/light/specular_lighting.glsl"
 #include "/include/misc/edge_highlight.glsl"
 #include "/include/misc/material.glsl"
 #include "/include/misc/rain_puddles.glsl"
@@ -262,6 +294,10 @@ uniform float time_midnight;
 
 #if defined WORLD_OVERWORLD && defined BLOCKY_CLOUDS
 #include "/include/sky/blocky_clouds.glsl"
+#endif
+
+#if defined CLOUD_SHADOWS
+#include "/include/light/cloud_shadows.glsl"
 #endif
 
 /*
@@ -434,6 +470,11 @@ void main() {
 		shadows *= float(!parallax_shadow);
 #endif
 
+#ifdef CLOUD_SHADOWS
+		float cloud_shadows = get_cloud_shadows(colortex8, scene_pos);
+		shadows *= cloud_shadows;
+#endif
+
 		// Diffuse lighting
 
 		scene_color = get_diffuse_lighting(
@@ -445,6 +486,9 @@ void main() {
 			light_levels,
 			ao,
 			sss_depth,
+#ifdef CLOUD_SHADOWS
+			cloud_shadows,
+#endif
 			shadow_distance_fade,
 			NoL,
 			NoV,
@@ -476,7 +520,7 @@ void main() {
 
 		vec3 border_fog_color = mix(atmosphere, horizon_color, sqr(horizon_factor)) * (1.0 - biome_cave);
 	#else
-		vec3 border_fog_color = ambient_color;
+		vec3 border_fog_color = texture(colortex4, project_sky(world_dir)).rgb;
 	#endif
 
 		float border_fog = border_fog(scene_pos, world_dir);

@@ -22,9 +22,17 @@ flat out vec3 sun_color;
 flat out vec3 moon_color;
 flat out vec3 sky_color;
 
-flat out vec2 clouds_coverage_cu;
-flat out vec2 clouds_coverage_ac;
-flat out vec2 clouds_coverage_ci;
+flat out vec2 clouds_cumulus_coverage;
+flat out vec2 clouds_altocumulus_coverage;
+flat out vec2 clouds_cirrus_coverage;
+
+flat out float clouds_cumulus_congestus_amount;
+flat out float clouds_stratus_amount;
+
+flat out float aurora_amount;
+flat out mat2x3 aurora_colors;
+
+flat out float overcastness;
 #endif
 
 // ------------
@@ -73,6 +81,7 @@ uniform float biome_humidity;
 // ------------
 
 #define ATMOSPHERE_SCATTERING_LUT depthtex0
+#define WEATHER_AURORA
 #define WEATHER_CLOUDS
 
 #if defined WORLD_OVERWORLD
@@ -89,16 +98,25 @@ void main() {
 	sun_color = get_sun_exposure() * get_sun_tint();
 	moon_color = get_moon_exposure() * get_moon_tint();
 
+	overcastness = daily_weather_blend(daily_weather_overcastness);
+
 	const vec3 sky_dir = normalize(vec3(0.0, 1.0, -0.8)); // don't point direcly upwards to avoid the sun halo when the sun path rotation is 0
 	sky_color = atmosphere_scattering(sky_dir, sun_dir) * sun_color + atmosphere_scattering(sky_dir, moon_dir) * moon_color;
 	sky_color = tau * mix(sky_color, vec3(sky_color.b) * sqrt(2.0), rcp_pi);
 	sky_color = mix(sky_color, tau * get_weather_color(), rainStrength);
 
 	clouds_weather_variation(
-		clouds_coverage_cu,
-		clouds_coverage_ac,
-		clouds_coverage_ci
+		clouds_cumulus_coverage,
+		clouds_altocumulus_coverage,
+		clouds_cirrus_coverage,
+		clouds_cumulus_congestus_amount,
+		clouds_stratus_amount
 	);
+
+	aurora_amount = get_aurora_amount();
+	aurora_colors = get_aurora_colors();
+
+	sky_color += aurora_amount * AURORA_CLOUD_LIGHTING * mix(aurora_colors[0], aurora_colors[1], 0.25);
 #endif
 
 	vec2 vertex_pos = gl_Vertex.xy * taau_render_scale * rcp(float(CLOUDS_TEMPORAL_UPSCALING));
@@ -124,9 +142,17 @@ flat in vec3 sun_color;
 flat in vec3 moon_color;
 flat in vec3 sky_color;
 
-flat in vec2 clouds_coverage_cu;
-flat in vec2 clouds_coverage_ac;
-flat in vec2 clouds_coverage_ci;
+flat in vec2 clouds_cumulus_coverage;
+flat in vec2 clouds_altocumulus_coverage;
+flat in vec2 clouds_cirrus_coverage;
+
+flat in float clouds_cumulus_congestus_amount;
+flat in float clouds_stratus_amount;
+
+flat in float aurora_amount;
+flat in mat2x3 aurora_colors;
+
+flat in float overcastness;
 #endif
 
 // ------------
@@ -199,6 +225,7 @@ uniform float biome_humidity;
 
 #if defined WORLD_OVERWORLD
 #include "/include/sky/atmosphere.glsl"
+#include "/include/sky/aurora.glsl"
 #include "/include/sky/clouds.glsl"
 #endif
 
@@ -223,24 +250,35 @@ float depth_max_4x4(sampler2D depth_sampler) {
 void main() {
 	ivec2 texel = ivec2(gl_FragCoord.xy);
 
-#if defined WORLD_OVERWORLD && !defined BLOCKY_CLOUDS
+	clouds = vec4(0.0, 0.0, 0.0, 1.0);
+
+#if defined WORLD_OVERWORLD
 	ivec2 checkerboard_pos = CLOUDS_TEMPORAL_UPSCALING * texel + clouds_checkerboard_offsets[frameCounter % checkerboard_area];
 
 	vec2 new_uv = vec2(checkerboard_pos) / vec2(view_res) * rcp(float(taau_render_scale));
 
-	// Skip rendering clouds if they are occluded by terrain
+	// Skip rendering if occluded by terrain
 	float depth_max = depth_max_4x4(depthtex1);
 	if (depth_max < 1.0) { clouds = vec4(0.0, 0.0, 0.0, 1.0); return; }
+
+	// Clouds
 
 	vec3 view_pos = screen_to_view_space(vec3(new_uv, 1.0), false);
 	vec3 ray_dir = mat3(gbufferModelViewInverse) * normalize(view_pos);
 
 	vec3 clear_sky = atmosphere_scattering(ray_dir, sun_color, sun_dir, moon_color, moon_dir);
+	     clear_sky = mix(clear_sky, 1.1 * vec3(dot(clear_sky, luminance_weights_rec2020)), 0.75 * overcastness * time_noon * linear_step(0.0, 0.05, ray_dir.y));
 
 	float dither = texelFetch(noisetex, ivec2(checkerboard_pos & 511), 0).b;
 	      dither = r1(frameCounter / checkerboard_area, dither);
 
+#ifndef BLOCKY_CLOUDS
 	clouds = draw_clouds(ray_dir, clear_sky, dither);
+#endif
+
+	// Aurora
+
+	clouds.xyz += draw_aurora(ray_dir, dither) * clouds.w;
 #endif
 }
 
