@@ -10,8 +10,7 @@
 */
 
 #include "/include/global.glsl"
-
-
+varying vec2 texCoord;
 //----------------------------------------------------------------------------//
 #if defined vsh
 
@@ -71,7 +70,6 @@ uniform float time_sunrise;
 uniform float time_noon;
 uniform float time_sunset;
 uniform float time_midnight;
-
 // ------------
 //   Includes
 // ------------
@@ -92,6 +90,7 @@ uniform float time_midnight;
 
 void main() {
 	uv = gl_MultiTexCoord0.xy;
+	texCoord = (gl_TextureMatrix[0] * gl_MultiTexCoord0).xy;
 
 	light_color   = texelFetch(colortex4, ivec2(191, 0), 0).rgb;
 	ambient_color = texelFetch(colortex4, ivec2(191, 1), 0).rgb;
@@ -273,6 +272,7 @@ uniform float time_noon;
 uniform float time_sunset;
 uniform float time_midnight;
 
+uniform float viewWidth, viewHeight, aspectRatio;
 // ------------
 //   Includes
 // ------------
@@ -286,6 +286,7 @@ uniform float time_midnight;
 #include "/include/misc/edge_highlight.glsl"
 #include "/include/misc/material.glsl"
 #include "/include/misc/rain_puddles.glsl"
+#include "/include/misc/fullBorder.glsl"
 #include "/include/sky/sky.glsl"
 #include "/include/utility/bicubic.glsl"
 #include "/include/utility/color.glsl"
@@ -507,7 +508,9 @@ void main() {
 #ifdef EDGE_HIGHLIGHT
 		scene_color *= 1.0 + 0.5 * get_edge_highlight(scene_pos, flat_normal, depth, material_mask);
 #endif
-
+#ifdef FULL_BORDER
+		scene_color = fullborder(scene_color, depthtex1, uv, viewWidth, viewHeight, near, far);
+#endif
 		// Apply fog
 
 #ifdef BORDER_FOG
@@ -533,6 +536,7 @@ void main() {
 #if defined WORLD_OVERWORLD && defined BLOCKY_CLOUDS
 		scene_color = scene_color * blocky_clouds.a + blocky_clouds.rgb * fog.a;
 #endif
+
 	}
 }
 
