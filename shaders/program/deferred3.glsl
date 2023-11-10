@@ -467,7 +467,7 @@ void main() {
 		#define shadow_distance_fade 0.0
 #endif
 
-#if defined POM && defined POM_SHADOW
+#if defined POM && defined POM_SHADOW && (defined SPECULAR_MAPPING || defined NORMAL_MAPPING)
 		shadows *= float(!parallax_shadow);
 #endif
 

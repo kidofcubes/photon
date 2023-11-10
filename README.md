@@ -29,8 +29,26 @@ fork of [photon](https://github.com/sixthsurge/photon)
 * Much improved image quality thanks to TAA, FXAA and CAS
 * Advanced temporal upscaling (disabled by default) for low end devices
 
+## showcase videos
+
 <div align = "center">
 	<a href="http://www.youtube.com/watch?feature=player_embedded&v=vxE_CVeU8Rs" target="_blank"><img src="http://img.youtube.com/vi/vxE_CVeU8Rs/0.jpg" border="0"/></a>
-	<p> awesome showcase video by iambeen
+	<p> by iambeen
 	<br><br>
 </div>
+
+<div align = "center">
+	<a href="http://www.youtube.com/watch?feature=player_embedded&v=gMLFZMBK-ZQ" target="_blank"><img src="http://img.youtube.com/vi/gMLFZMBK-ZQ/0.jpg" border="0"/></a>
+	<p> by CosmicNexus
+	<br><br>
+</div>
+
+<div align = "center">
+	<a href="http://www.youtube.com/watch?feature=player_embedded&v=_aSmM7jg9Nw" target="_blank"><img src="http://img.youtube.com/vi/_aSmM7jg9Nw/0.jpg" border="0"/></a>
+	<p> by VIPUL
+	<br><br>
+</div>
+
+## community
+
+Want to discuss the shaderpack? Questions? Head over to our discord channel `#photon-sixthsurge` in the [ShaderLABS Discord](https://discord.gg/Jhr5PF7hhp).
