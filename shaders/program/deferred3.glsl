@@ -195,6 +195,7 @@ uniform sampler2D colortex3; // animated overlays/vanilla sky
 uniform sampler2D colortex4; // sky map
 uniform sampler2D colortex6; // ambient occlusion
 uniform sampler2D colortex7; // clouds
+uniform sampler2D colortex9; // blockid normals lighting
 
 #ifdef CLOUD_SHADOWS
 uniform sampler2D colortex8; // cloud shadow map
@@ -312,6 +313,7 @@ void main() {
 
 	float depth         = texelFetch(depthtex1, texel, 0).x;
 	vec4 gbuffer_data_0 = texelFetch(colortex1, texel, 0);
+	//vec4 gbuffer_data_0 = vec4(0.0);
 #if defined NORMAL_MAPPING || defined SPECULAR_MAPPING
 	vec4 gbuffer_data_1 = texelFetch(colortex2, texel, 0);
 #endif
@@ -378,17 +380,42 @@ void main() {
 
 		// Unpack gbuffer data
 
-		mat4x2 data = mat4x2(
-			unpack_unorm_2x8(gbuffer_data_0.x),
-			unpack_unorm_2x8(gbuffer_data_0.y),
-			unpack_unorm_2x8(gbuffer_data_0.z),
-			unpack_unorm_2x8(gbuffer_data_0.w)
-		);
+		//mat4x2 data = mat4x2(
+		//	unpack_unorm_2x8(gbuffer_data_0.x),
+		//	unpack_unorm_2x8(gbuffer_data_0.y),
+		//	unpack_unorm_2x8(gbuffer_data_0.z),
+		//	unpack_unorm_2x8(gbuffer_data_0.w)
+		//);
 
-		vec3 albedo        = vec3(data[0], data[1].x);
-		uint material_mask = uint(255.0 * data[1].y);
-		vec3 flat_normal   = decode_unit_vector(data[2]);
-		vec2 light_levels  = data[3];
+		vec4 thing = texelFetch(colortex9, texel, 0);
+		//vec3 albedo        = vec3(data[0], data[1].x);
+		//vec3 albedo        = vec3(0.5);
+		vec3 albedo = gbuffer_data_0.xyz; 
+		//uint material_mask = uint(255.0 * data[1].y);
+		uint material_mask = 1;
+		//uint material_mask = uint(255.0 * thing.x);
+		// uint material_mask = uint(thing.x);
+		//vec3 flat_normal   = decode_unit_vector(data[2]);
+		//vec3 flat_normal   = vec3(1,1,1);
+		vec3 flat_normal   = decode_unit_vector(unpack_unorm_2x8(thing.y));
+		// vec3 flat_normal = decode_unit_vector(thing.yw);
+		if(thing.y==0){
+			//flat_normal=vec3(0.0);
+		}
+		//flat_normal=vec3(0.0);
+
+		//vec2 light_levels  = data[3];
+		//vec2 light_levels  = vec2(0.5);
+		//vec2 light_levels = vec2(gbuffer_data_0.w,0);
+		//vec2 light_levels = vec2(0,gbuffer_data_0.w);
+		//if(gbuffer_data_0.w==0){
+		//	light_levels  = unpack_unorm_2x8(thing.z);
+		//	flat_normal   = decode_unit_vector(unpack_unorm_2x8(thing.y));
+		//	material_mask = uint(255.0 * thing.x);
+		//}		
+		vec2 light_levels  = unpack_unorm_2x8(thing.z);
+		//light_levels  = unpack_unorm_2x8(thing.z);
+		//vec2 light_levels  = unpack_unorm_2x8(thing.z);
 
 		uint overlay_id = uint(255.0 * overlays.a);
 		albedo = overlay_id == 0u ? albedo + overlays.rgb : albedo; // enchantment glint
@@ -400,6 +427,10 @@ void main() {
 
 #ifdef NORMAL_MAPPING
 		vec3 normal = decode_unit_vector(gbuffer_data_1.xy);
+		if(gbuffer_data_1.xy==0){
+			//normal=vec3(0.5);
+		}
+		//normal=vec3(0.0);
 #else
 		#define normal flat_normal
 #endif
@@ -460,7 +491,12 @@ void main() {
 #if defined SHADOW && (defined WORLD_OVERWORLD || defined WORLD_END)
 		float sss_depth;
 		float shadow_distance_fade;
-		vec3 shadows = calculate_shadows(scene_pos, flat_normal, light_levels.y, material.sss_amount, shadow_distance_fade, sss_depth);
+		vec3 shadows;
+		//if(NoL!=0){
+			shadows = calculate_shadows(scene_pos, flat_normal, light_levels.y, material.sss_amount, shadow_distance_fade, sss_depth);
+		//}else{
+		//	shadows = vec3(sqrt(ao) * pow8(light_levels.y));
+		//}
 #else
 		vec3 shadows = vec3(sqrt(ao) * pow8(light_levels.y));
 		#define sss_depth 0.0
@@ -477,6 +513,12 @@ void main() {
 #endif
 
 		// Diffuse lighting
+		// if(flat_normal==vec3(0.0)){
+		// if(vec3(0.0)==vec3(0.0)){
+		if(shadows.x==0){
+			shadows=vec3(1.0);
+			NoL=0;
+		}
 
 		scene_color = get_diffuse_lighting(
 			material,
@@ -490,8 +532,10 @@ void main() {
 #ifdef CLOUD_SHADOWS
 			cloud_shadows,
 #endif
-			shadow_distance_fade,
+			// shadow_distance_fade,
+			0,
 			NoL,
+			// 0,
 			NoV,
 			NoH,
 			LoV

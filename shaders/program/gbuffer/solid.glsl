@@ -159,16 +159,18 @@ void main() {
 #if defined fsh
 
 layout (location = 0) out vec4 gbuffer_data_0; // albedo, block ID, flat normal, light levels
-layout (location = 1) out vec4 gbuffer_data_1; // detailed normal, specular map (optional)
+layout (location = 1) out vec4 colortex9;      // blockid normal lighting
+layout (location = 2) out vec4 colortex8;      // blockid normal lighting
+layout (location = 3) out vec4 gbuffer_data_1; // detailed normal, specular map (optional)
 
-/* DRAWBUFFERS:1 */
+/* DRAWBUFFERS:1982 */
 
 #ifdef NORMAL_MAPPING
-/* DRAWBUFFERS:12 */
+/* DRAWBUFFERS:1982 */
 #endif
 
 #ifdef SPECULAR_MAPPING
-/* DRAWBUFFERS:12 */
+/* DRAWBUFFERS:1982 */
 #endif
 
 in vec2 uv;
@@ -448,11 +450,28 @@ void main() {
 	#endif
 #endif
 
-	gbuffer_data_0.x  = pack_unorm_2x8(base_color.rg);
-	gbuffer_data_0.y  = pack_unorm_2x8(base_color.b, clamp01(float(material_mask) * rcp(255.0)));
-	gbuffer_data_0.z  = pack_unorm_2x8(encode_unit_vector(tbn[2]));
-	gbuffer_data_0.w  = pack_unorm_2x8(dither_8bit(adjusted_light_levels, dither));
-
+	//gbuffer_data_0.x  = pack_unorm_2x8(base_color.rg);
+	//gbuffer_data_0.x  = pack_unorm_2x8(0,0);
+	//gbuffer_data_0.x  = 0;
+	//gbuffer_data_0.y  = pack_unorm_2x8(base_color.b, clamp01(float(material_mask) * rcp(255.0)));
+	//gbuffer_data_0.y  = pack_unorm_2x8(0, clamp01(float(material_mask) * rcp(255.0)));
+	gbuffer_data_0.xyz=base_color.rgb;
+	//gbuffer_data_0.z  = pack_unorm_2x8(encode_unit_vector(tbn[2]));
+	//gbuffer_data_0.w  = pack_unorm_2x8(dither_8bit(adjusted_light_levels, dither));
+	//colortex9.x=clamp01(float(material_mask) * rcp(255.0));
+	colortex9.x=material_mask;
+	// colortex9.x=0.5;
+	colortex9.y=pack_unorm_2x8(encode_unit_vector(tbn[2]));
+	// colortex9.yw=(encode_unit_vector(tbn[2]));
+	//colortex9.yw=(encode_unit_vector(tbn[2]));
+	colortex9.z=pack_unorm_2x8(dither_8bit(adjusted_light_levels, dither));
+	//colortex10.r=(tbn[2].y);
+	//colortex10.g=(tbn[2].x);
+	//colortex8.rgb=tbn[2]*255;
+	colortex8.rgb= decode_unit_vector(((encode_unit_vector(tbn[2]))));
+	//colortex10.rgb=vec3(0,255,0);
+	//gbuffer_data_0.w=pack_unorm_2x8(dither_8bit(adjusted_light_levels, dither));
+	//gbuffer_data_0.w=0;
 #ifdef NORMAL_MAPPING
 	gbuffer_data_1.xy = encode_unit_vector(normal);
 #endif

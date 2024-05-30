@@ -114,6 +114,7 @@ uniform sampler3D colortex0; // 3D worley noise
 uniform sampler2D colortex1; // gbuffer data
 uniform sampler2D colortex3; // translucent color
 uniform sampler2D colortex4; // sky map
+uniform sampler2D colortex9; // gbuffer old data
 
 uniform sampler2D depthtex0;
 uniform sampler2D depthtex1;
@@ -197,9 +198,11 @@ void main() {
 
 	float depth0        = texelFetch(depthtex0, view_texel, 0).x;
 	float depth1        = texelFetch(depthtex1, view_texel, 0).x;
-	vec4 gbuffer_data_0 = texelFetch(colortex1, view_texel, 0);
+	//vec4 gbuffer_data_0 = texelFetch(colortex1, view_texel, 0);
+	vec4 gbuffer_data_0 = texelFetch(colortex9, view_texel, 0);
 
-	float skylight = unpack_unorm_2x8(gbuffer_data_0.w).y;
+	//float skylight = unpack_unorm_2x8(gbuffer_data_0.w).y;
+	float skylight = unpack_unorm_2x8(gbuffer_data_0.z).y;
 
 	vec3 view_pos  = screen_to_view_space(vec3(uv, depth0), true);
 	vec3 scene_pos = view_to_scene_space(view_pos);

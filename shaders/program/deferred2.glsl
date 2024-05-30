@@ -50,6 +50,7 @@ uniform sampler2D colortex2; // gbuffer 1
 uniform sampler2D colortex5; // clouds
 uniform sampler2D colortex6; // ambient occlusion history
 uniform sampler2D colortex7; // clouds history
+uniform sampler2D colortex9; // gbuffer 0 old
 
 uniform sampler2D depthtex1;
 
@@ -273,7 +274,8 @@ void main() {
 	float depth = texelFetch(depthtex1, view_texel, 0).x;
 
 #ifndef NORMAL_MAPPING
-	vec4 gbuffer_data = texelFetch(colortex1, view_texel, 0);
+	//vec4 gbuffer_data = texelFetch(colortex1, view_texel, 0);
+	vec4 gbuffer_data = texelFetch(colortex9, view_texel, 0);
 #else
 	vec4 gbuffer_data = texelFetch(colortex2, view_texel, 0);
 #endif
@@ -295,7 +297,7 @@ void main() {
 #ifdef NORMAL_MAPPING
 	vec3 world_normal = decode_unit_vector(gbuffer_data.xy);
 #else
-	vec3 world_normal = decode_unit_vector(unpack_unorm_2x8(gbuffer_data.z));
+	vec3 world_normal = decode_unit_vector(unpack_unorm_2x8(gbuffer_data.y));
 #endif
 
 	vec3 view_normal = mat3(gbufferModelView) * world_normal;

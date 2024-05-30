@@ -11,28 +11,35 @@
   Magic constants, please don't remove these!
 
   const int colortex0Format = R11F_G11F_B10F; // scene color (deferred3 -> temporal), bloom tiles (composite5 -> composite14), final color (composite14 -> final)
-  const int colortex1Format = RGBA16;         // gbuffer data 0 (solid -> composite1)
+  const int colortex1Format = RGB8;         // gbuffer data 0 (solid -> composite1)
   const int colortex2Format = RGBA16;         // gbuffer data 1 (solid -> composite1)
   const int colortex3Format = RGBA8;          // animated overlays/vanilla sky (solid -> deferred3), blended translucent color (translucent -> composite1), bloomy fog amount (composite1 -> composite14)
   const int colortex4Format = R11F_G11F_B10F; // sky map (deferred -> composite1)
   const int colortex5Format = RGBA16F;        // scene history (always), low-res clouds (deferred1 -> deferred2 +flip),
   const int colortex6Format = RGBA16F;        // ambient occlusion history & clouds pixel age (always), fog scattering (composite -> composite1 +flip), TAAU min color (composite2 -> composite3 +flip)
   const int colortex7Format = RGBA16F;        // clouds history (always), fog transmittance (composite -> composite1), TAAU max color (composite2 -> composite3 +flip)
+  const int colortex9Format = RGBA16;         // normals and block id
+  const int colortex10Format = RGB8;        // debug
 
   const bool colortex0Clear = false;
   const bool colortex1Clear = true;
-  const bool colortex2Clear = false;
+  const bool colortex2Clear = true;
   const bool colortex3Clear = true;
   const bool colortex4Clear = false;
   const bool colortex5Clear = false;
   const bool colortex6Clear = false;
   const bool colortex7Clear = false;
+  const bool colortex9Clear = true;
+  const bool colortex10Clear =true;
 
+  const vec4 colortex2ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
   const vec4 colortex3ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
+  const vec3 colortex8ClearColor = vec3(0.0, 0.0, 0.0);
+  const vec3 colortex9ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
 
   #ifdef CLOUD_SHADOWS
-  const int colortex8Format = R16;            // cloud shadow map
-  const bool colortex8Clear = false;
+  const int colortex8Format = RGB16;            // cloud shadow map
+  const bool colortex8Clear = true;
   #endif
 
 --------------------------------------------------------------------------------

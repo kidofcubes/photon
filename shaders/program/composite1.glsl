@@ -63,6 +63,7 @@ uniform sampler2D colortex4; // Sky map
 uniform sampler2D colortex5; // Scene history
 uniform sampler2D colortex6; // Volumetric fog scattering
 uniform sampler2D colortex7; // Volumetric fog transmittance
+uniform sampler2D colortex9; // Gbuffer 0 old data
 
 uniform sampler2D depthtex0;
 uniform sampler2D depthtex1;
@@ -231,17 +232,24 @@ void main() {
 
 	// Unpack gbuffer data
 
-	mat4x2 data = mat4x2(
-		unpack_unorm_2x8(gbuffer_data_0.x),
-		unpack_unorm_2x8(gbuffer_data_0.y),
-		unpack_unorm_2x8(gbuffer_data_0.z),
-		unpack_unorm_2x8(gbuffer_data_0.w)
-	);
+	//mat4x2 data = mat4x2(
+	//	unpack_unorm_2x8(gbuffer_data_0.x),
+	//	unpack_unorm_2x8(gbuffer_data_0.y),
+	//	unpack_unorm_2x8(gbuffer_data_0.z),
+	//	unpack_unorm_2x8(gbuffer_data_0.w)
+	//);
 
-	vec3 albedo        = vec3(data[0], data[1].x);
-	uint material_mask = uint(255.0 * data[1].y);
-	vec3 flat_normal   = decode_unit_vector(data[2]);
-	vec2 light_levels  = data[3];
+	//vec3 albedo        = vec3(data[0], data[1].x);
+	//uint material_mask = uint(255.0 * data[1].y);
+	//vec3 flat_normal   = decode_unit_vector(data[2]);
+	//vec2 light_levels  = data[3];
+
+	vec4 thing = texelFetch(colortex9, texel, 0);
+	vec3 albedo = gbuffer_data_0.xyz; 
+	uint material_mask = uint(255.0 * thing.x);
+	vec3 flat_normal   = decode_unit_vector(unpack_unorm_2x8(thing.y));
+	vec2 light_levels  = unpack_unorm_2x8(thing.z);
+
 
 	Material material;
 	vec3 normal = flat_normal;
@@ -310,8 +318,10 @@ void main() {
 		vec3  refracted_color = texture(colortex0, refracted_uv * taau_render_scale).rgb;
 
 		// Make sure the refracted object is behind water
-		float refracted_data  = texelFetch(colortex1, ivec2(refracted_uv * taau_render_scale * view_res), 0).y;
-		uint  refracted_mask  = uint(unpack_unorm_2x8(refracted_data).y * 255.0);
+		//float refracted_data  = texelFetch(colortex1, ivec2(refracted_uv * taau_render_scale * view_res), 0).y;
+		//uint  refracted_mask  = uint(unpack_unorm_2x8(refracted_data).y * 255.0);
+		float refracted_data  = texelFetch(colortex9, ivec2(refracted_uv * taau_render_scale * view_res), 0).x;
+		uint  refracted_mask  = uint(refracted_data * 255.0);
 
 		if (refracted_mask == 1) scene_color = refracted_color;
 #endif
@@ -373,7 +383,8 @@ void main() {
 			float NoH = (NoL + NoV) * halfway_norm;
 			float LoH = LoV * halfway_norm + halfway_norm;
 
-			vec3 shadows = vec3(data[0].xy, data[1].x);
+			//vec3 shadows = vec3(data[0].xy, data[1].x);
+			vec3 shadows = gbuffer_data_0.xyz;
 
 			reflections += get_specular_highlight(material, NoL, NoV, NoH, LoV, LoH) * light_color * shadows;
 		}

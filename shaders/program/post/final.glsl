@@ -156,7 +156,7 @@ void main() {
 #if   DEBUG_VIEW == DEBUG_VIEW_SAMPLER
 	if (clamp(texel, ivec2(0), ivec2(textureSize(DEBUG_SAMPLER, 0))) == texel) {
 		scene_color = texelFetch(DEBUG_SAMPLER, texel, 0).rgb;
-		scene_color = display_eotf(scene_color);
+		//scene_color = display_eotf(scene_color);
 	}
 #endif
 
