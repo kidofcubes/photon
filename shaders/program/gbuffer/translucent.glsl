@@ -1,7 +1,7 @@
 /*
 --------------------------------------------------------------------------------
 
-  Photon Shaders by SixthSurge
+  Photon Shader by SixthSurge
 
   program/gbuffer/translucent.glsl:
   Handle translucent terrain, translucent entities (Iris), translucent handheld
@@ -31,10 +31,6 @@ out vec2 atlas_tile_coord;
 out vec3 tangent_pos;
 flat out vec2 atlas_tile_offset;
 flat out vec2 atlas_tile_scale;
-#endif
-
-#if defined WORLD_OVERWORLD && defined OVERCAST_SKY_AFFECTS_LIGHTING
-flat out float overcastness;
 #endif
 
 // --------------
@@ -102,10 +98,6 @@ void main() {
 	light_color   = texelFetch(colortex4, ivec2(191, 0), 0).rgb;
 	ambient_color = texelFetch(colortex4, ivec2(191, 1), 0).rgb;
 
-#if defined WORLD_OVERWORLD && defined OVERCAST_SKY_AFFECTS_LIGHTING
-	overcastness  = texelFetch(colortex4, ivec2(191, 2), 0).x;
-#endif
-
 	bool is_top_vertex = uv.y < mc_midTexCoord.y;
 
 	scene_pos = transform(gl_ModelViewMatrix, gl_Vertex.xyz);                            // To view space
@@ -169,14 +161,14 @@ layout (location = 0) out vec4 scene_color;
 layout (location = 1) out vec4 gbuffer_data_0; // albedo, block ID, flat normal, light levels
 layout (location = 2) out vec4 gbuffer_data_1; // detailed normal, specular map (optional)
 
-/* DRAWBUFFERS:01 */
+/* RENDERTARGETS: 0,1 */
 
 #ifdef NORMAL_MAPPING
-/* DRAWBUFFERS:012 */
+/* RENDERTARGETS: 0,1,2 */
 #endif
 
 #ifdef SPECULAR_MAPPING
-/* DRAWBUFFERS:012 */
+/* RENDERTARGETS: 0,1,2 */
 #endif
 
 in vec2 uv;
@@ -194,10 +186,6 @@ in vec2 atlas_tile_coord;
 in vec3 tangent_pos;
 flat in vec2 atlas_tile_offset;
 flat in vec2 atlas_tile_scale;
-#endif
-
-#if defined WORLD_OVERWORLD && defined OVERCAST_SKY_AFFECTS_LIGHTING
-flat in float overcastness;
 #endif
 
 // ------------
@@ -265,6 +253,7 @@ uniform int isEyeInWater;
 uniform float blindness;
 uniform float nightVision;
 uniform float darknessFactor;
+uniform float eyeAltitude;
 
 uniform vec3 light_dir;
 uniform vec3 sun_dir;
@@ -315,6 +304,7 @@ uniform vec4 entityColor;
 #include "/include/light/diffuse_lighting.glsl"
 #include "/include/light/shadows.glsl"
 #include "/include/light/specular_lighting.glsl"
+#include "/include/misc/distant_horizons.glsl"
 #include "/include/misc/material.glsl"
 #include "/include/misc/water_normal.glsl"
 #include "/include/utility/color.glsl"
@@ -408,6 +398,15 @@ void main() {
 	vec3 world_dir = normalize(scene_pos - gbufferModelViewInverse[3].xyz);
 
 	vec3 view_back_pos = screen_to_view_space(vec3(coord, depth1), true);
+
+#ifdef DISTANT_HORIZONS
+	float depth1_dh = texelFetch(dhDepthTex1, ivec2(gl_FragCoord.xy), 0).x;
+
+	if (is_distant_horizons_terrain(depth1, depth1_dh)) {
+		view_back_pos = screen_to_view_space(vec3(coord, depth1_dh), true, true);
+	}
+#endif
+
 	vec3 scene_back_pos = view_to_scene_space(view_back_pos);
 
 	float layer_dist = distance(scene_pos, scene_back_pos); // distance to solid layer along view ray
@@ -480,7 +479,7 @@ void main() {
 		base_color.rgb = mix(base_color.rgb, entityColor.rgb, entityColor.a);
 #endif
 
-		material = material_from(base_color.rgb * base_color.a, material_mask, world_pos, adjusted_light_levels);
+		material = material_from(base_color.rgb * base_color.a, material_mask, world_pos, tbn[2], adjusted_light_levels);
 
 		//--//
 
@@ -537,19 +536,20 @@ void main() {
 	float NoH = (NoL + NoV) * halfway_norm;
 	float LoH = LoV * halfway_norm + halfway_norm;
 
+#if defined WORLD_OVERWORLD && defined CLOUD_SHADOWS
+	float cloud_shadows = get_cloud_shadows(colortex8, scene_pos);
+#else
+	const float cloud_shadows = 1.0;
+#endif
+
 #if defined SHADOW && (defined WORLD_OVERWORLD || defined WORLD_END)
 	float sss_depth;
 	float shadow_distance_fade;
-	vec3 shadows = calculate_shadows(scene_pos, tbn[2], adjusted_light_levels.y, material.sss_amount, shadow_distance_fade, sss_depth);
+	vec3 shadows = calculate_shadows(scene_pos, tbn[2], adjusted_light_levels.y, cloud_shadows, material.sss_amount, shadow_distance_fade, sss_depth);
 #else
 	vec3 shadows = vec3(pow8(adjusted_light_levels.y));
 	#define sss_depth 0.0
 	#define shadow_distance_fade 0.0
-#endif
-
-#ifdef CLOUD_SHADOWS
-		float cloud_shadows = get_cloud_shadows(colortex8, scene_pos);
-		shadows *= cloud_shadows;
 #endif
 
 	// Diffuse lighting
@@ -575,7 +575,7 @@ void main() {
 
 	// Specular highlight
 
-#if defined WORLD_OVERWORLD || defined WORLD_END
+#if (defined WORLD_OVERWORLD || defined WORLD_END) && !defined NO_NORMAL
 	#ifdef WATER_WAVES
 	if (!is_water) // Specular highlight on water must be applied in composite, after waves are calculated
 	#endif
@@ -623,9 +623,15 @@ void main() {
 
 	vec3 color_to_store = is_water ? shadows : base_color.rgb;
 
+#ifdef NO_NORMAL
+	#define flat_normal normal
+#else
+	#define flat_normal tbn[2]
+#endif
+
 	gbuffer_data_0.x  = pack_unorm_2x8(color_to_store.rg);
 	gbuffer_data_0.y  = pack_unorm_2x8(color_to_store.b, clamp01(float(material_mask) * rcp(255.0)));
-	gbuffer_data_0.z  = pack_unorm_2x8(encode_unit_vector(tbn[2]));
+	gbuffer_data_0.z  = pack_unorm_2x8(encode_unit_vector(flat_normal));
 	gbuffer_data_0.w  = pack_unorm_2x8(dither_8bit(adjusted_light_levels, 0.5));
 }
 
