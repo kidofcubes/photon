@@ -221,7 +221,8 @@ vec3 trace_specular_ray(
 #if defined SSR_PREVIOUS_FRAME && !defined DISTANT_HORIZONS
 	#ifdef VL
 		// Un-apply volumetric fog scattering using fog from the current frame
-		vec2 fog_uv = clamp(hit_pos.xy * VL_RENDER_SCALE, vec2(0.0), floor(view_res * VL_RENDER_SCALE - 1.0) * view_pixel_size);
+		// vec2 fog_uv = clamp(hit_pos.xy * VL_RENDER_SCALE, vec2(0.0), floor(view_res * VL_RENDER_SCALE - 1.0) * view_pixel_size);
+		vec2 fog_uv = clamp(hit_pos.xy * 0.5, vec2(0.0), floor(view_res * 0.5 - 1.0) * view_pixel_size);
 		vec3 fog_scattering = texture(colortex6, fog_uv).rgb;
 	#else
 		vec3 fog_scattering = vec3(0.0);

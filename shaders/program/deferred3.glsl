@@ -10,7 +10,6 @@
 */
 
 #include "/include/global.glsl"
-varying vec2 texCoord;
 //----------------------------------------------------------------------------//
 #if defined vsh
 
