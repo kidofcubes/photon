@@ -246,7 +246,8 @@ void main() {
 
 	vec4 thing = texelFetch(colortex9, texel, 0);
 	vec3 albedo = gbuffer_data_0.xyz; 
-	uint material_mask = uint(255.0 * thing.x);
+	// uint material_mask = uint(thing.x);
+	uint material_mask = uint(255.0 * unpack_unorm_2x8(thing.x).y);
 	vec3 flat_normal   = decode_unit_vector(unpack_unorm_2x8(thing.y));
 	vec2 light_levels  = unpack_unorm_2x8(thing.z);
 
@@ -321,7 +322,7 @@ void main() {
 		//float refracted_data  = texelFetch(colortex1, ivec2(refracted_uv * taau_render_scale * view_res), 0).y;
 		//uint  refracted_mask  = uint(unpack_unorm_2x8(refracted_data).y * 255.0);
 		float refracted_data  = texelFetch(colortex9, ivec2(refracted_uv * taau_render_scale * view_res), 0).x;
-		uint  refracted_mask  = uint(refracted_data * 255.0);
+		uint  refracted_mask  = uint(refracted_data);
 
 		if (refracted_mask == 1) scene_color = refracted_color;
 #endif

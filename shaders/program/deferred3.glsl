@@ -392,9 +392,10 @@ void main() {
 		//vec3 albedo        = vec3(0.5);
 		vec3 albedo = gbuffer_data_0.xyz; 
 		//uint material_mask = uint(255.0 * data[1].y);
-		uint material_mask = 1;
-		//uint material_mask = uint(255.0 * thing.x);
+		// uint material_mask = 1;
+		// uint material_mask = uint(255.0 * thing.x);
 		// uint material_mask = uint(thing.x);
+		uint material_mask = uint(255.0 * unpack_unorm_2x8(thing.x).y);
 		//vec3 flat_normal   = decode_unit_vector(data[2]);
 		//vec3 flat_normal   = vec3(1,1,1);
 		vec3 flat_normal   = decode_unit_vector(unpack_unorm_2x8(thing.y));
@@ -491,12 +492,8 @@ void main() {
 #if defined SHADOW && (defined WORLD_OVERWORLD || defined WORLD_END)
 		float sss_depth;
 		float shadow_distance_fade;
-		vec3 shadows;
-		//if(NoL!=0){
-			shadows = calculate_shadows(scene_pos, flat_normal, light_levels.y, material.sss_amount, shadow_distance_fade, sss_depth);
-		//}else{
-		//	shadows = vec3(sqrt(ao) * pow8(light_levels.y));
-		//}
+		vec3 shadows = calculate_shadows(scene_pos, flat_normal, light_levels.y, material.sss_amount, shadow_distance_fade, sss_depth);
+		// vec3 shadows = calculate_shadows(scene_pos, flat_normal, light_levels.y, 0, 0, 0);
 #else
 		vec3 shadows = vec3(sqrt(ao) * pow8(light_levels.y));
 		#define sss_depth 0.0
@@ -513,8 +510,6 @@ void main() {
 #endif
 
 		// Diffuse lighting
-		// if(flat_normal==vec3(0.0)){
-		// if(vec3(0.0)==vec3(0.0)){
 		if(shadows.x==0){
 			shadows=vec3(1.0);
 			NoL=0;
@@ -535,7 +530,6 @@ void main() {
 			// shadow_distance_fade,
 			0,
 			NoL,
-			// 0,
 			NoV,
 			NoH,
 			LoV
