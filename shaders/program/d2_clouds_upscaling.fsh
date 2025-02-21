@@ -31,7 +31,7 @@ in vec2 uv;
 
 uniform sampler2D noisetex;
 
-uniform sampler2D colortex6;  // previous frame depth
+uniform sampler2D colortex14;  // previous frame depth
 uniform sampler2D colortex9;  // low-res clouds
 uniform sampler2D colortex10; // low-res clouds apparent distance
 uniform sampler2D colortex11; // clouds history
@@ -64,13 +64,8 @@ uniform vec2 view_pixel_size;
 uniform vec2 taa_offset;
 uniform vec2 clouds_offset;
 
-#ifdef DAYLIGHT_CYCLE
 uniform bool daylight_cycle_enabled;
 uniform bool world_age_changed;
-#else
-uniform bool world_age_changed_small;
-#define world_age_changed world_age_changed_small
-#endif
 
 // ------------
 //   Includes
@@ -142,7 +137,6 @@ vec3 reproject_clouds(vec2 uv, float distance_to_cloud) {
 
 	vec3 cloud_pos = world_dir * distance_to_cloud + gbufferModelViewInverse[3].xyz;
 
-#ifdef DAYLIGHT_CYCLE
 	// Work out which layer this cloud belongs to
 	vec3 velocity;
 	vec3 air_cloud_pos = vec3(0.0, CLOUDS_SCALE * (eyeAltitude - SEA_LEVEL) + planet_radius, 0.0) + CLOUDS_SCALE * cloud_pos;
@@ -157,13 +151,11 @@ vec3 reproject_clouds(vec2 uv, float distance_to_cloud) {
 	}
 
 	cloud_pos += velocity * frameTime * rcp(CLOUDS_SCALE) * float(daylight_cycle_enabled);
-#endif
 
 	return reproject_scene_space(cloud_pos, false, false);
 }
 
 void main() {
-
 	const int checkerboard_area = CLOUDS_TEMPORAL_UPSCALING * CLOUDS_TEMPORAL_UPSCALING;
 
 	ivec2 dst_texel = ivec2(gl_FragCoord.xy);
@@ -177,11 +169,11 @@ vec4 current            = texelFetch(colortex9, src_texel, 0);
 	//   combined depth buffer for DH
 	// --------------------------------
 
-
 #ifdef DISTANT_HORIZONS
 	// Check for DH terrain
 	float depth_dh = texelFetch(dhDepthTex, dst_texel, 0).x;
 	bool is_dh_terrain = is_distant_horizons_terrain(depth, depth_dh);
+
 	float depth_linear    = screen_to_view_space_depth(gbufferProjectionInverse, depth);
 	float depth_linear_dh = screen_to_view_space_depth(dhProjectionInverse, depth_dh);
 
@@ -211,6 +203,7 @@ vec4 current            = texelFetch(colortex9, src_texel, 0);
 	#define uv_clamped uv
 #endif
 
+	// Find the closest cloud distance between the current frame and a 4x4 area of the previous frame
 	float closest_distance = min(
 		apparent_distance,
 		texture_min_4x4(colortex12, uv_clamped * taau_render_scale)
@@ -242,7 +235,7 @@ vec4 current            = texelFetch(colortex9, src_texel, 0);
 	vec2 history_data = texture(colortex12, previous_uv_clamped * taau_render_scale).xy;
 
 	// Depth at the previous position
-	float history_depth = 1.0 - min_of(textureGather(colortex6, previous_uv_clamped, 2));
+	float history_depth = 1.0 - min_of(textureGather(colortex14, previous_uv_clamped, 0));
 
 	// Get distance to terrain in the previous frame
 	float distance_to_terrain_squared = length_squared(
@@ -315,7 +308,6 @@ vec4 current            = texelFetch(colortex9, src_texel, 0);
 	float pixel_age = max0(history_data.y) * float(!disocclusion);
 	float history_weight = 1.0 - rcp(max(pixel_age - checkerboard_area, 1.0));
 
-
 #ifndef TAAU
 	// Offcenter rejection
 	vec2 pixel_center_offset = 1.0 - abs(fract(previous_uv * view_res) * 2.0 - 1.0);
@@ -324,9 +316,8 @@ vec4 current            = texelFetch(colortex9, src_texel, 0);
 
 	history_weight *= offcenter_rejection;
 #endif
-	
+
 	clouds_history = max0(mix(current, history, history_weight));
 	clouds_data.x = mix(apparent_distance, apparent_distance_history, history_weight);
 	clouds_data.y = min(++pixel_age, CLOUDS_ACCUMULATION_LIMIT);
 }
-

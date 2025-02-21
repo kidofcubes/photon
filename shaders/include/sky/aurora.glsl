@@ -1,20 +1,13 @@
-#ifndef INCLUDE_SKY_AURORA
+#if !defined INCLUDE_SKY_AURORA
 #define INCLUDE_SKY_AURORA
-
 
 #include "/include/utility/color.glsl"
 #include "/include/utility/fast_math.glsl"
 #include "/include/utility/geometry.glsl"
 #include "/include/utility/phase_functions.glsl"
 
-
 vec3 aurora_color(vec3 pos, float altitude_fraction) {
-	return mix(
-		daily_weather_variation.aurora_colors[0], 
-		daily_weather_variation.aurora_colors[1], 
-		clamp01(dampen(altitude_fraction))
-	);
-}
+	return mix(aurora_colors[0], aurora_colors[1], clamp01(dampen(altitude_fraction))); }
 
 #if AURORA_TYPE == AURORA_PHOTON
 
@@ -39,7 +32,7 @@ vec3 draw_aurora(vec3 ray_dir, float dither) {
 	const float volume_top     = 3000.0;
 	const float volume_radius  = 20000.0;
 
-	if (daily_weather_variation.aurora_amount < 0.01) return vec3(0.0);
+	if (aurora_amount < 0.01) return vec3(0.0);
 
 	// Calculate distance to enter and exit the volume
 
@@ -77,10 +70,8 @@ vec3 draw_aurora(vec3 ray_dir, float dither) {
 		emission += color * (shape * distance_fade * step_length);
 	}
 
-	return (0.001 * mix(AURORA_BRIGHTNESS, AURORA_BRIGHTNESS_SNOW, biome_may_snow)) * emission * daily_weather_variation.aurora_amount;
+	return (0.001 * mix(AURORA_BRIGHTNESS, AURORA_BRIGHTNESS_SNOW, biome_may_snow)) * emission * aurora_amount;
 }
-
-
 
 #elif AURORA_TYPE == AURORA_NIMITZ
 
@@ -145,7 +136,7 @@ vec4 aurora(vec3 dir, float dither) {
 		float pattern = triNoise2d(coord * frequency, speed);
 		vec4 interColor = vec4(0.0, 0.0, 0.0, pattern);
 
-		interColor.rgb = pattern * mix(daily_weather_variation.aurora_colors[0], daily_weather_variation.aurora_colors[1], smoothstep(0.0, 1.0, amp_fraction)); //mix(aurora_colors[0], aurora_colors[1], smoothstep(0.0, 1.0, sqr(amp_fraction)));
+		interColor.rgb = pattern * mix(aurora_colors[0], aurora_colors[1], smoothstep(0.0, 1.0, amp_fraction)); //mix(aurora_colors[0], aurora_colors[1], smoothstep(0.0, 1.0, sqr(amp_fraction)));
 		//interColor.rgb = pattern * aurora_color(vec3(0), smoothstep(0.0, 1.0, amp_fraction));
 		//interColor.rgb = pattern * (sin(1.0 - vec3(2.15, -0.5, 1.2) + (amp_fraction * 49) * 0.043) * 0.5 + 0.5);
 		avgColor =  mix(avgColor, interColor, 0.5);
@@ -158,7 +149,7 @@ vec4 aurora(vec3 dir, float dither) {
 }
 
 vec3 draw_aurora(vec3 ray_dir, float dither) {
-	if (daily_weather_variation.aurora_amount < 0.01) return vec3(0.0);
+	if (aurora_amount < 0.01) return vec3(0.0);
 	//ray_dir *= dither;
 
 	vec3 color = vec3(0.0);
@@ -169,7 +160,7 @@ vec3 draw_aurora(vec3 ray_dir, float dither) {
 		color = color * (1.0 - aur.a) + aur.rgb;
 	}
 
-	return color * daily_weather_variation.aurora_amount;
+	return color * aurora_amount;
 
 }
 

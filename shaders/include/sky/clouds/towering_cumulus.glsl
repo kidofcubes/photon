@@ -5,11 +5,6 @@
 
 #include "common.glsl"
 
-// Regular cumulus layer
-const float clouds_towering_cumulus_radius      = planet_radius + CLOUDS_TOWERING_CUMULUS_ALTITUDE * 1.5;
-const float clouds_towering_cumulus_thickness   = CLOUDS_TOWERING_CUMULUS_ALTITUDE * CLOUDS_TOWERING_CUMULUS_THICKNESS;
-const float clouds_towering_cumulus_top_radius  = clouds_towering_cumulus_radius + clouds_towering_cumulus_thickness * 7.0;
-
 // altitude_fraction := 0 at the bottom of the cloud layer and 1 at the top
 float clouds_towering_cumulus_altitude_shaping(float density, float altitude_fraction) {
 	// Carve egg shape to make the cloud more vertical
@@ -39,7 +34,7 @@ float clouds_towering_cumulus_density(vec3 pos, vec2 detail_weights, vec2 edge_s
 		texture(noisetex, (0.000008 / CLOUDS_TOWERING_CUMULUS_SIZE) * pos.xz).w  // cloud shape
 	);
 
-	float density = mix(daily_weather_variation.clouds_towering_cumulus_coverage.x, daily_weather_variation.clouds_towering_cumulus_coverage.y, pow(noise.x, 1.0));
+	float density = mix(clouds_towering_cumulus_coverage.x, clouds_towering_cumulus_coverage.y, pow(noise.x, 1.0));
 		  density = linear_step(1.0 - density, 1.0, noise.y);
 	      density = clouds_towering_cumulus_altitude_shaping(density, altitude_fraction);
 
@@ -56,7 +51,7 @@ float clouds_towering_cumulus_density(vec3 pos, vec2 detail_weights, vec2 edge_s
 #else
 	const float worley_0 = 0.5;
 	const float worley_1 = 0.5;
-#endif
+#endif // !PROGRAM_PREPARE
 
 	float detail_fade = 0.02 * smoothstep(0.85, 1.0, 1.0 - altitude_fraction)
 	                  - 0.35 * smoothstep(0.05, 0.5, altitude_fraction) + 0.6;
@@ -78,6 +73,7 @@ float clouds_towering_cumulus_optical_depth(
 	vec2 detail_weights,
 	vec2 edge_sharpening,
 	float dynamic_thickness,
+
 	float dither,
 	const uint step_count,
 	bool include_towering
@@ -104,19 +100,16 @@ vec2 clouds_towering_cumulus_scattering(
 	float light_optical_depth,
 	float sky_optical_depth,
 	float ground_optical_depth,
-	float extinction_coeff,
-	float scattering_coeff,
 	float step_transmittance,
 	float cos_theta,
-	float altocumulus_shadow,
 	float bounced_light
 ) {
 	vec2 scattering = vec2(0.0);
 
-	float scatter_amount = scattering_coeff;
-	float extinct_amount = extinction_coeff;
+	float scatter_amount = clouds_params.l0_scattering_coeff;
+	float extinct_amount = clouds_params.l0_extinction_coeff;
 
-	float scattering_integral_times_density = (1.0 - step_transmittance) / extinction_coeff;
+	float scattering_integral_times_density = (1.0 - step_transmittance) / clouds_params.l0_extinction_coeff;
 
 	float powder_effect = clouds_powder_effect(density, cos_theta);
 
@@ -124,12 +117,12 @@ vec2 clouds_towering_cumulus_scattering(
 	vec3 phase_g = pow(vec3(0.6, 0.9, 0.3), vec3(1.0 + light_optical_depth));
 
 	for (uint i = 0u; i < 8u; ++i) {
-		scattering.x += scatter_amount * exp(-extinct_amount *  light_optical_depth) * phase * (1.0 - 0.8 * altocumulus_shadow);
+		scattering.x += scatter_amount * exp(-extinct_amount *  light_optical_depth) * phase * (1.0 - 0.8 * clouds_params.l0_shadow);
 		scattering.x += scatter_amount * exp(-extinct_amount * ground_optical_depth) * isotropic_phase * bounced_light;
-		scattering.x += scatter_amount * exp(-extinct_amount *    sky_optical_depth) * isotropic_phase * altocumulus_shadow * 0.2;
+		scattering.x += scatter_amount * exp(-extinct_amount *    sky_optical_depth) * isotropic_phase * clouds_params.l0_shadow * 0.2;
 		scattering.y += scatter_amount * exp(-extinct_amount *    sky_optical_depth) * isotropic_phase;
 
-		scatter_amount *= 0.55 * mix(lift(clamp01(scattering_coeff / 0.1), 0.33), 1.0, cos_theta * 0.5 + 0.5) * powder_effect;
+		scatter_amount *= 0.55 * mix(lift(clamp01(clouds_params.l0_scattering_coeff / 0.1), 0.33), 1.0, cos_theta * 0.5 + 0.5) * powder_effect;
 		extinct_amount *= 0.4;
 		phase_g *= 0.8;
 
@@ -158,7 +151,7 @@ CloudsResult draw_towering_cumulus_clouds(
 #else
 	const uint  primary_steps_horizon = CLOUDS_TOWERING_CUMULUS_PRIMARY_STEPS_H;
 	const uint  primary_steps_zenith  = CLOUDS_TOWERING_CUMULUS_PRIMARY_STEPS_Z;
-#endif
+#endif // PROGRAM_DEFERRED0
 	const uint  lighting_steps        = CLOUDS_TOWERING_CUMULUS_LIGHTING_STEPS;
 	const uint  ambient_steps         = CLOUDS_TOWERING_CUMULUS_AMBIENT_STEPS;
 	const float max_ray_length        = 100e4;
@@ -196,7 +189,7 @@ CloudsResult draw_towering_cumulus_clouds(
 	//   Lighting Setup
 	// ------------------
 
-	float altocumulus_shadow = linear_step(0.5, 0.6, daily_weather_variation.clouds_altocumulus_coverage.x) * dampen(day_factor);
+	float altocumulus_shadow = linear_step(0.5, 0.6, clouds_params.l1_coverage.x) * dampen(day_factor);
 
 	bool  moonlit            = sun_dir.y < -0.04;
 	vec3  light_dir          = moonlit ? moon_dir : sun_dir;
@@ -206,7 +199,7 @@ CloudsResult draw_towering_cumulus_clouds(
 	float extinction_coeff   = mix(0.07, 0.1, smoothstep(0.0, 0.3, abs(sun_dir.y))) * (1.0 - 0.33 * rainStrength) * (1.0 - 0.6 * altocumulus_shadow) * CLOUDS_TOWERING_CUMULUS_DENSITY;
 	float scattering_coeff   = extinction_coeff * mix(1.00, 1.6, rainStrength);
 
-	float dynamic_thickness  = mix(0.5, 1.0, smoothstep(0.4, 0.6, daily_weather_variation.clouds_towering_cumulus_coverage.y));
+	float dynamic_thickness  = mix(0.5, 1.0, smoothstep(0.4, 0.6, clouds_towering_cumulus_coverage.y));
 	vec2  detail_weights     = vec2(0.33, 0.40) * CLOUDS_TOWERING_CUMULUS_DETAIL_STRENGTH;
 	vec2  edge_sharpening    = vec2(3.0, 8.0);
 
@@ -236,7 +229,7 @@ CloudsResult draw_towering_cumulus_clouds(
 		vec2 hash = vec2(0.0);
 #else
 		vec2 hash = hash2(fract(ray_pos));
-#endif
+#endif // PROGRAM_DEFERRED0
 
 		float light_optical_depth  = clouds_towering_cumulus_optical_depth(ray_pos, light_dir, detail_weights, edge_sharpening, dynamic_thickness, hash.x, lighting_steps, false);
 		float sky_optical_depth    = clouds_towering_cumulus_optical_depth(ray_pos, sky_dir, detail_weights, edge_sharpening, dynamic_thickness, hash.y, ambient_steps, false);
@@ -247,11 +240,8 @@ CloudsResult draw_towering_cumulus_clouds(
 			light_optical_depth,
 			sky_optical_depth,
 			ground_optical_depth,
-			extinction_coeff,
-			scattering_coeff,
 			step_transmittance,
 			cos_theta,
-			altocumulus_shadow,
 			bounced_light
 		) * transmittance;
 
@@ -264,7 +254,6 @@ CloudsResult draw_towering_cumulus_clouds(
 	vec3 light_color  = sunlight_color * atmosphere_transmittance(ray_origin, light_dir);
 		 light_color  = atmosphere_post_processing(light_color);
 	     light_color *= moonlit ? moon_color : sun_color;
-		 light_color *= 1.0 - rainStrength;
 
 	float clouds_transmittance = linear_step(min_transmittance, 1.0, transmittance);
 
@@ -281,4 +270,4 @@ CloudsResult draw_towering_cumulus_clouds(
 		apparent_distance
 	);
 }
-#endif 
+#endif // INCLUDE_SKY_CLOUDS_TOWERING_CUMULUS

@@ -5,15 +5,10 @@
 
 #include "common.glsl"
 
-// Regular thunderhead layer
-const float clouds_thunderhead_radius      = planet_radius + CLOUDS_THUNDERHEAD_ALTITUDE * 0.6;
-const float clouds_thunderhead_thickness   = CLOUDS_THUNDERHEAD_ALTITUDE * CLOUDS_THUNDERHEAD_THICKNESS;
-const float clouds_thunderhead_top_radius  = clouds_thunderhead_radius + clouds_thunderhead_thickness * 15.0;
-
 // altitude_fraction := 0 at the bottom of the cloud layer and 1 at the top
 float clouds_thunderhead_altitude_shaping(float density, float altitude_fraction, float noise) {
 	// Calculate anvil shape parameters
-	float anvil_coverage = daily_weather_variation.clouds_thunderhead_coverage.y;
+	float anvil_coverage = clouds_thunderhead_coverage.y;
 	float anvil_height = altitude_fraction - anvil_coverage;
 	
 	// Create parabolic anvil shape
@@ -46,7 +41,7 @@ float clouds_thunderhead_density(vec3 pos, vec2 detail_weights, vec2 edge_sharpe
 		texture(noisetex, (0.00000025 / CLOUDS_THUNDERHEAD_SIZE) * pos.xz).x  // cloud shape
 	);
 
-	float density = mix(daily_weather_variation.clouds_thunderhead_coverage.x, daily_weather_variation.clouds_thunderhead_coverage.y, noise.x);
+	float density = mix(clouds_thunderhead_coverage.x, clouds_thunderhead_coverage.y, noise.x);
 	      density = linear_step(1.0 - density, 1.0, noise.y);
 	      density = clouds_thunderhead_altitude_shaping(density, altitude_fraction, noise.x);
 
@@ -63,7 +58,7 @@ float clouds_thunderhead_density(vec3 pos, vec2 detail_weights, vec2 edge_sharpe
 #else
 	const float worley_0 = 0.5;
 	const float worley_1 = 0.5;
-#endif
+#endif // PROGRAM_PREPARE
 
 	float detail_fade = 0.02 * smoothstep(0.85, 1.0, 1.0 - altitude_fraction)
 	                  - 0.35 * smoothstep(0.05, 0.5, altitude_fraction) + 0.6;
@@ -112,19 +107,17 @@ vec2 clouds_thunderhead_scattering(
 	float light_optical_depth,
 	float sky_optical_depth,
 	float ground_optical_depth,
-	float extinction_coeff,
-	float scattering_coeff,
 	float step_transmittance,
 	float cos_theta,
-	float altocumulus_shadow,
 	float bounced_light,
 	float altitude_fraction
 ) {
 	vec2 scattering = vec2(0.0);
-	float scatter_amount = scattering_coeff;
-	float extinct_amount = extinction_coeff;
+	
+	float scatter_amount = clouds_params.l0_scattering_coeff;
+	float extinct_amount = clouds_params.l0_extinction_coeff;
 
-	float scattering_integral_times_density = (1.0 - step_transmittance) / extinction_coeff;
+	float scattering_integral_times_density = (1.0 - step_transmittance) / clouds_params.l0_extinction_coeff;
 
 	float powder_effect = clouds_powder_effect(density, cos_theta);
 
@@ -138,7 +131,7 @@ vec2 clouds_thunderhead_scattering(
 	// Calculate if we're below altocumulus layer
 	float current_altitude = CLOUDS_THUNDERHEAD_ALTITUDE * (1.0 + altitude_fraction * CLOUDS_THUNDERHEAD_THICKNESS);
 	float shadow_factor = smoothstep(CLOUDS_ALTOCUMULUS_ALTITUDE - 200.0, CLOUDS_ALTOCUMULUS_ALTITUDE, current_altitude);
-	float applied_shadow = mix(altocumulus_shadow, 0.0, shadow_factor);
+	float applied_shadow = mix(clouds_params.l0_shadow, 0.0, shadow_factor);
 
 	for (uint i = 0u; i < 8u; ++i) {
 		scattering.x += scatter_amount * exp(-extinct_amount * light_optical_depth) * phase * (1.0 - 0.8 * applied_shadow) * bottom_darkening;
@@ -146,7 +139,7 @@ vec2 clouds_thunderhead_scattering(
 		scattering.x += scatter_amount * exp(-extinct_amount * sky_optical_depth) * isotropic_phase * applied_shadow * 0.2 * bottom_darkening;
 		scattering.y += scatter_amount * exp(-extinct_amount * sky_optical_depth) * isotropic_phase * bottom_darkening;
 
-		scatter_amount *= 0.55 * mix(lift(clamp01(scattering_coeff / 0.1), 0.33), 1.0, cos_theta * 0.5 + 0.5) * powder_effect;
+		scatter_amount *= 0.55 * mix(lift(clamp01(clouds_params.l0_scattering_coeff / 0.1), 0.33), 1.0, cos_theta * 0.5 + 0.5) * powder_effect;
 		extinct_amount *= 0.4;
 		phase_g *= 0.8;
 
@@ -175,7 +168,7 @@ CloudsResult draw_thunderhead_clouds(
 #else
 	const uint  primary_steps_horizon = CLOUDS_THUNDERHEAD_PRIMARY_STEPS_H;
 	const uint  primary_steps_zenith  = CLOUDS_THUNDERHEAD_PRIMARY_STEPS_Z;
-#endif
+#endif // PROGRAM_DEFERRED0
 	const uint  lighting_steps        = CLOUDS_THUNDERHEAD_LIGHTING_STEPS;
 	const uint  ambient_steps         = CLOUDS_THUNDERHEAD_AMBIENT_STEPS;
 	const float max_ray_length        = 100e4;
@@ -213,7 +206,7 @@ CloudsResult draw_thunderhead_clouds(
 	//   Lighting Setup
 	// ------------------
 
-	float altocumulus_shadow = linear_step(0.5, 0.6, daily_weather_variation.clouds_altocumulus_coverage.x) * dampen(day_factor);
+	float altocumulus_shadow = linear_step(0.5, 0.6, clouds_params.l1_coverage.x) * dampen(day_factor);
 
 	bool  moonlit            = sun_dir.y < -0.04;
 	vec3  light_dir          = moonlit ? moon_dir : sun_dir;
@@ -223,7 +216,7 @@ CloudsResult draw_thunderhead_clouds(
 	float extinction_coeff   = mix(0.07, 0.1, smoothstep(0.0, 0.3, abs(sun_dir.y))) * (1.0 - 0.33 * rainStrength) * (1.0 - 0.6 * altocumulus_shadow) * CLOUDS_THUNDERHEAD_DENSITY;
 	float scattering_coeff   = extinction_coeff * mix(1.00, 1.6, rainStrength);
 
-	float dynamic_thickness  = mix(0.5, 1.0, smoothstep(0.4, 0.6, daily_weather_variation.clouds_thunderhead_coverage.y));
+	float dynamic_thickness  = mix(0.5, 1.0, smoothstep(0.4, 0.6, clouds_thunderhead_coverage.y));
 	vec2  detail_weights     = vec2(0.01, 0.05) * CLOUDS_THUNDERHEAD_DETAIL_STRENGTH;
 	vec2  edge_sharpening    = vec2(3.0, 8.0);
 
@@ -246,14 +239,14 @@ CloudsResult draw_thunderhead_clouds(
 
 		density *= 1.0 - distance_fade;
 
-		float step_optical_depth = density * extinction_coeff * step_length;
+		float step_optical_depth = density * clouds_params.l0_extinction_coeff * step_length;
 		float step_transmittance = exp(-step_optical_depth);
 
 #if defined PROGRAM_DEFERRED0
 		vec2 hash = vec2(0.0);
 #else
 		vec2 hash = hash2(fract(ray_pos));
-#endif
+#endif // PROGRAM_DEFERRED0
 
 		float light_optical_depth  = clouds_thunderhead_optical_depth(ray_pos, light_dir, detail_weights, edge_sharpening, dynamic_thickness, hash.x, lighting_steps, false);
 		float sky_optical_depth    = clouds_thunderhead_optical_depth(ray_pos, sky_dir, detail_weights, edge_sharpening, dynamic_thickness, hash.y, ambient_steps, false);
@@ -266,11 +259,8 @@ CloudsResult draw_thunderhead_clouds(
 			light_optical_depth,
 			sky_optical_depth,
 			ground_optical_depth,
-			extinction_coeff,
-			scattering_coeff,
 			step_transmittance,
 			cos_theta,
-			altocumulus_shadow,
 			bounced_light,
 			altitude_fraction
 		) * transmittance;
@@ -284,7 +274,6 @@ CloudsResult draw_thunderhead_clouds(
 	vec3 light_color  = sunlight_color * atmosphere_transmittance(ray_origin, light_dir);
 		 light_color  = atmosphere_post_processing(light_color);
 	     light_color *= moonlit ? moon_color : sun_color;
-		 light_color *= 1.0 - rainStrength;
 
 	float clouds_transmittance = linear_step(min_transmittance, 1.0, transmittance);
 
@@ -301,4 +290,4 @@ CloudsResult draw_thunderhead_clouds(
 		apparent_distance
 	);
 }
-#endif
+#endif // INCLUDE_SKY_CLOUDS_THUNDERHEAD

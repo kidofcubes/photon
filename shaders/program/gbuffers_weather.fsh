@@ -13,7 +13,6 @@
 
 layout (location = 0) out vec4 frag_color;
 
-
 /* RENDERTARGETS: 13 */
 
 in vec2 uv;
@@ -55,6 +54,5 @@ void main() {
 	frag_color = is_rain
 		? vec4(get_rain_color(), RAIN_OPACITY * base_color.a) * tint
 		: vec4(get_snow_color(), SNOW_OPACITY * base_color.a) * tint;
-
+	frag_color.rgb *= frag_color.a;
 }
-

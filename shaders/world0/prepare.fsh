@@ -24,8 +24,8 @@ flat in vec3 moon_dir_fixed;
 flat in vec3 light_dir_fixed;
 #endif
 
-#include "/include/misc/weather_struct.glsl"
-flat in DailyWeatherVariation daily_weather_variation;
+#include "/include/sky/clouds/parameters.glsl"
+flat in CloudsParameters clouds_params;
 
 // ------------
 //   Uniforms
@@ -100,7 +100,7 @@ void main() {
 #ifndef BLOCKY_CLOUDS
     cloud_shadow_map = render_cloud_shadow_map(uv);
 #else
-    cloud_shadow_map = 1.0;
+    cloud_shadow_map = vec2(1.0);
 #endif
 }
 

@@ -83,22 +83,26 @@ const float ao_render_scale = 0.5;
 vec3 resample_bent_normal(vec2 uv) {
 	vec4 xs = textureGather(colortex6, uv, 2);
 	vec4 ys = textureGather(colortex6, uv, 3);
+
 	xs = max0(xs);
 	ys = max0(ys);
+
 	mat4x3 bent_normals = mat4x3(
-	decode_unit_vector(vec2(xs.x, ys.x)),
-	decode_unit_vector(vec2(xs.y, ys.y)),
-	decode_unit_vector(vec2(xs.z, ys.z)),
-	decode_unit_vector(vec2(xs.w, ys.w))
+		decode_unit_vector(vec2(xs.x, ys.x)),
+		decode_unit_vector(vec2(xs.y, ys.y)),
+		decode_unit_vector(vec2(xs.z, ys.z)),
+		decode_unit_vector(vec2(xs.w, ys.w))
 	);
+
 	vec2 f = cubic_smooth(fract(uv * (view_res * 0.5) + 0.5));
 	vec2 one_minus_f = 1.0 - f;
 	vec4 weights = vec4(
-	one_minus_f.x * f.y,
-	f.x * f.y,
-	f.x * one_minus_f.y,
-	one_minus_f.x * one_minus_f.y
+		one_minus_f.x * f.y,
+		f.x * f.y,
+		f.x * one_minus_f.y,
+		one_minus_f.x * one_minus_f.y
 	);
+
 	return normalize_safe(bent_normals * weights);
 }
 
@@ -166,11 +170,11 @@ void main() {
 	
 #if   SHADER_AO == SHADER_AO_NONE
 	ao = vec2(1.0, 0.0);
-	bent_normal = flat_normal;
+	bent_normal = world_normal;
 #elif SHADER_AO == SHADER_AO_SSAO
 	ao.x = compute_ssao(screen_pos, view_pos, view_normal, dither);
 	ao.y = 0.0;
-	bent_normal = flat_normal;
+	bent_normal = world_normal;
 #elif SHADER_AO == SHADER_AO_GTAO
 	ao = compute_gtao(screen_pos, view_pos, view_normal, dither, is_dh_terrain, bent_normal);
 #endif

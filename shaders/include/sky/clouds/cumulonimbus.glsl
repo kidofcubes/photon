@@ -5,15 +5,6 @@
 
 #include "common.glsl"
 
-const float clouds_cumulonimbus_radius           = planet_radius + CLOUDS_CUMULONIMBUS_ALTITUDE;
-const float clouds_cumulonimbus_thickness        = /*CLOUDS_CUMULONIMBUS_ALTITUDE*/ 1146 * CLOUDS_CUMULONIMBUS_THICKNESS;
-const float clouds_cumulonimbus_top_radius       = clouds_cumulonimbus_radius + clouds_cumulonimbus_thickness * CLOUDS_CUMULONIMBUS_END_DISTANCE * 0.00004;
-float clouds_cumulonimbus_distance               = mix(CLOUDS_CUMULONIMBUS_DISTANCE, 0.0, rainStrength);
-const float clouds_cumulonimbus_end_distance     = CLOUDS_CUMULONIMBUS_END_DISTANCE;
-const float clouds_cumulonimbus_blend_distance   = 6.0;
-const float clouds_cumulonimbus_extinction_coeff = 0.05 * CLOUDS_CUMULONIMBUS_DENSITY;
-float clouds_cumulonimbus_scattering_coeff       = clouds_cumulonimbus_extinction_coeff * (1.0 - 0.33 * rainStrength);
-
 // from https://www.shadertoy.com/view/csSfRK
 // x: Coverage signal [0, 1]
 // y: Height signal [0, 1]
@@ -41,7 +32,7 @@ float clouds_cumulonimbus_altitude_shaping(float noise, float altitude_fraction,
 	float height = altitude_fraction <= boundary ? linear_step(0.0, boundary, altitude_fraction) : linear_step(boundary, 1.0, altitude_fraction);
 	//float shape = CloudShape(1.0, height, altitude_fraction <= boundary ? vec2(0.45, 1.00) : vec2(0.00, 0.50));
 
-	float density = 1.2 * linear_step(0.53, 1.0, noise) * linear_step(0.5, 0.75, daily_weather_variation.clouds_cumulonimbus_amount);
+	float density = 1.2 * linear_step(0.53, 1.0, noise) * linear_step(0.5, 0.75, clouds_params.cumulonimbus_amount);
 
 	//density -= 1.0 - CloudShape(1.0, height, shapeParams) /* * 0.5 */;
 
@@ -91,12 +82,12 @@ float clouds_cumulonimbus_density(vec3 pos) {
 	// 2D noise for base shape and coverage
 	vec4 noise = texture(noisetex, (0.000004 / CLOUDS_CUMULONIMBUS_SIZE) * pos.xz);
 
-	float density  = clouds_cumulonimbus_altitude_shaping((max1(daily_weather_variation.clouds_cumulonimbus_amount + max0(sqrt(min(dist2, 2.0) / 1.8) - 0.65)) * noise.y - 0.1737 * noise.w), altitude_fraction, vec2(clouds_cumulonimbus_blend_distance, distance_fraction)/*vec2(length(pos.xz), clouds_cumulonimbus_end_distance * 0.25)*/); //.4 * noise.y + .07 * noise.z + .3 * noise.x + .23 * noise.w
+	float density  = clouds_cumulonimbus_altitude_shaping((max1(clouds_params.cumulonimbus_amount + max0(sqrt(min(dist2, 2.0) / 1.8) - 0.65)) * noise.y - 0.1737 * noise.w), altitude_fraction, vec2(clouds_cumulonimbus_blend_distance, distance_fraction)/*vec2(length(pos.xz), clouds_cumulonimbus_end_distance * 0.25)*/); //.4 * noise.y + .07 * noise.z + .3 * noise.x + .23 * noise.w
 	density *= 4.0 * distance_fraction_start * (1.0 - distance_fraction);
 
 	if (density < eps) return 0.0;
 
-	#ifndef PROGRAM_PREPARE
+#ifndef PROGRAM_PREPARE
 		// Curl noise used to warp the 3D noise into swirling shapes
 	vec3 curl = (0.181 * CLOUDS_CUMULONIMBUS_CURL_STRENGTH) * texture(colortex7, 0.0002 * pos).xyz * smoothstep(0.4, 1.0, 1.0 - altitude_fraction);
 	vec3 wind = vec3(wind_velocity * world_age, 0.0).xzy;
@@ -104,10 +95,10 @@ float clouds_cumulonimbus_density(vec3 pos) {
 	// 3D worley noise for detail
 	float worley_0 = texture(colortex6, (pos + 0.2 * wind) * 0.00016 + curl * 1.0).x;
 	float worley_1 = texture(colortex6, (pos + 0.4 * wind) * 0.0010 + curl * 3.0).x;
-	#else
+#else
 	const float worley_0 = 0.5;
 	const float worley_1 = 0.5;
-	#endif
+#endif // !PROGRAM_PREPARE
 
 		float detail_fade = 0.20 * smoothstep(0.85, 1.0, 1.0 - altitude_fraction)
 	- 0.35 * smoothstep(0.05, 0.5, altitude_fraction) + 0.6;
@@ -266,7 +257,7 @@ CloudsResult draw_cumulonimbus_clouds(
 		vec2 hash = vec2(0.0);
 #else
 		vec2 hash = hash2(fract(ray_pos)); // used to dither the light rays
-#endif
+#endif // PROGRAM_DEFERRED0
 
 		float light_optical_depth  = clouds_cumulonimbus_optical_depth(ray_pos, light_dir, hash.x, lighting_steps);
 		float sky_optical_depth    = clouds_cumulonimbus_optical_depth(ray_pos, sky_dir, hash.y, ambient_steps);
@@ -311,6 +302,6 @@ CloudsResult draw_cumulonimbus_clouds(
 		clouds_transmittance,
 		apparent_distance
 	);
-
 }
-#endif
+
+#endif // INCLUDE_SKY_CLOUDS_CUMULONIMBUS

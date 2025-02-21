@@ -4,7 +4,6 @@
 #include "/include/utility/bicubic.glsl"
 
 const ivec2 cloud_shadow_res = ivec2(CLOUD_SHADOW_RESOLUTION);
-
 const float cloud_shadow_extent = 256.0 / (CLOUDS_SCALE / 10.0);
 
 vec2 shadow_view_to_cloud_shadow_space(vec3 shadow_view_pos) {
@@ -13,7 +12,6 @@ vec2 shadow_view_to_cloud_shadow_space(vec3 shadow_view_pos) {
 		 cloud_shadow_pos  = cloud_shadow_pos * 0.5 + 0.5;
 
 	return cloud_shadow_pos;
-
 }
 
 vec2 project_cloud_shadow_map(vec3 scene_pos) {
@@ -47,7 +45,7 @@ float get_cloud_shadows(sampler2D cloud_shadow_map, vec3 scene_pos) {
 	      cloud_shadow = cloud_shadow * cloud_shadow_fade + (1.0 - cloud_shadow_fade);
 
 	return cloud_shadow * CLOUD_SHADOWS_INTENSITY + (1.0 - CLOUD_SHADOWS_INTENSITY);
-#endif
+#endif // CLOUD_SHADOWS
 }
 
 #if defined PROGRAM_PREPARE && defined CLOUD_SHADOWS
@@ -65,80 +63,73 @@ vec2 render_cloud_shadow_map(vec2 uv) {
 
 	vec3 pos; float t, density, extinction_coeff;
 	float shadow = 1.0;
+	float shadow_cumulus_only = 1.0;
 	float distance_fade;
-	float distance_fade_strength = 0.0001 * pulse(light_dir.y, -0.01, 0.2);
+	float distance_fade_strength = 0.0000001 * pulse(light_dir.y, -0.01, 0.2);
+	float dynamic_thickness = mix(
+		0.5,
+		1.0,
+		smoothstep(0.4, 0.6, clouds_params.l0_coverage.y)
+	);
+	vec2 detail_weights;
+	vec2 edge_sharpening;
 
 #ifdef CLOUDS_CUMULUS
-	float dynamic_thickness  = mix(
-		0.5, 
-		1.0, 
-		smoothstep(0.4, 0.6, daily_weather_variation.clouds_cumulus_coverage.y)
-	);
-	vec2 detail_weights = mix(vec2(0.33, 0.40), vec2(0.25, 0.20), sqr(daily_weather_variation.clouds_stratus_amount)) * CLOUDS_CUMULUS_DETAIL_STRENGTH;
-	vec2 edge_sharpening = mix(vec2(3.0, 8.0), vec2(1.0, 2.0), daily_weather_variation.clouds_stratus_amount);
+	detail_weights = mix(vec2(0.33, 0.40), vec2(0.25, 0.20), sqr(clouds_params.l0_cumulus_stratus_blend)) * CLOUDS_CUMULUS_DETAIL_STRENGTH;
+	edge_sharpening = mix(vec2(3.0, 8.0), vec2(1.0, 2.0), clouds_params.l0_cumulus_stratus_blend);
 
 	extinction_coeff = 0.25 * mix(0.05, 0.1, smoothstep(0.0, 0.3, abs(sun_dir.y))) * (1.0 - 0.33 * rainStrength) * CLOUDS_CUMULUS_DENSITY;
 	t = intersect_sphere(ray_origin, light_dir,	clouds_cumulus_radius + 0.25 * clouds_cumulus_thickness).y;
 	pos = ray_origin + light_dir * t;
-	distance_fade = exp2(distance_fade_strength * length(pos.xy));
+	distance_fade = exp2(-distance_fade_strength * length(pos.xy));
 	density = clouds_cumulus_density(pos, detail_weights, edge_sharpening, dynamic_thickness);
 	shadow *= exp(-1.00 * distance_fade * extinction_coeff * clouds_cumulus_thickness * rcp(abs(light_dir.y) + eps) * density);
-	float shadow_cumulus_only = shadow;
-#endif
+	shadow_cumulus_only = shadow;
+#endif // CLOUDS_CUMULUS
 
 #ifdef CLOUDS_TOWERING_CUMULUS
-	dynamic_thickness = mix(
-		0.5,
-		1.0,
-		smoothstep(0.4, 0.6, daily_weather_variation.clouds_towering_cumulus_coverage.y)
-	);
-	detail_weights = mix(vec2(0.33, 0.40), vec2(0.25, 0.20), sqr(daily_weather_variation.clouds_stratus_amount)) * CLOUDS_TOWERING_CUMULUS_DETAIL_STRENGTH;
-	edge_sharpening = mix(vec2(3.0, 8.0), vec2(1.0, 2.0), daily_weather_variation.clouds_stratus_amount);
+	detail_weights = mix(vec2(0.33, 0.40), vec2(0.25, 0.20), sqr(clouds_params.l0_cumulus_stratus_blend)) * CLOUDS_TOWERING_CUMULUS_DETAIL_STRENGTH;
+	edge_sharpening = mix(vec2(3.0, 8.0), vec2(1.0, 2.0), clouds_params.l0_cumulus_stratus_blend);
 
 	extinction_coeff = 0.25 * mix(0.05, 0.1, smoothstep(0.0, 0.3, abs(sun_dir.y))) * (1.0 - 0.33 * rainStrength) * CLOUDS_TOWERING_CUMULUS_DENSITY;
 	t = intersect_sphere(ray_origin, light_dir, clouds_towering_cumulus_radius + 0.25 * clouds_towering_cumulus_thickness).y;
 	pos = ray_origin + light_dir * t;
-	distance_fade = exp2(distance_fade_strength * length(pos.xy));
+	distance_fade = exp2(-distance_fade_strength * length(pos.xy));
 	density = clouds_towering_cumulus_density(pos, detail_weights, edge_sharpening, dynamic_thickness);
 	shadow *= exp(-1.00 * distance_fade * extinction_coeff * clouds_towering_cumulus_thickness * rcp(abs(light_dir.y) + eps) * density);
-#endif
+#endif // CLOUDS_TOWERING_CUMULUS
 
 #ifdef CLOUDS_THUNDERHEAD
-	dynamic_thickness = mix(
-		0.5,
-		1.0,
-		smoothstep(0.4, 0.6, daily_weather_variation.clouds_thunderhead_coverage.y)
-	);
-	detail_weights = mix(vec2(0.01, 0.05), vec2(0.25, 0.20), sqr(daily_weather_variation.clouds_stratus_amount)) * CLOUDS_THUNDERHEAD_DETAIL_STRENGTH;
-	edge_sharpening = mix(vec2(3.0, 8.0), vec2(1.0, 2.0), daily_weather_variation.clouds_stratus_amount);
+	detail_weights = mix(vec2(0.01, 0.05), vec2(0.25, 0.20), sqr(clouds_params.l0_cumulus_stratus_blend)) * CLOUDS_THUNDERHEAD_DETAIL_STRENGTH;
+	edge_sharpening = mix(vec2(3.0, 8.0), vec2(1.0, 2.0), clouds_params.l0_cumulus_stratus_blend);
 
 	extinction_coeff = 0.55 * mix(0.9, 0.008, smoothstep(0.0, 0.3, abs(sun_dir.y))) * (1.0 - 0.33 * rainStrength) * CLOUDS_THUNDERHEAD_DENSITY;
 	t = intersect_sphere(ray_origin, light_dir, clouds_thunderhead_radius + 6.25 * clouds_thunderhead_thickness).y;
 	pos = ray_origin + light_dir * t;
-	distance_fade = exp2(distance_fade_strength * length(pos.xy));
+	distance_fade = exp2(-distance_fade_strength * length(pos.xy));
 	density = clouds_thunderhead_density(pos, detail_weights, edge_sharpening, dynamic_thickness);
 	shadow *= exp(-1.00 * distance_fade * extinction_coeff * clouds_thunderhead_thickness * rcp(abs(light_dir.y) + eps) * density);
-#endif
+#endif // CLOUDS_THUNDERHEAD
 
 #ifdef CLOUDS_ALTOCUMULUS
 	extinction_coeff = mix(0.05, 0.1, day_factor) * CLOUDS_ALTOCUMULUS_DENSITY * (1.0 - 0.33 * rainStrength);
 	t = intersect_sphere(ray_origin, light_dir,	clouds_altocumulus_radius + 0.5 * clouds_altocumulus_thickness).y;
 	pos = ray_origin + light_dir * t;
-	distance_fade = exp2(distance_fade_strength * length(pos.xy));
+	distance_fade = exp2(-distance_fade_strength * length(pos.xy));
 	density = clouds_altocumulus_density(pos);
 	shadow *= exp(-1.00 * distance_fade * extinction_coeff * clouds_altocumulus_thickness * rcp(abs(light_dir.y) + eps) * density);
-#endif
+#endif //CLOUDS_ALTOCUMULUS
 
 #ifdef CLOUDS_CIRRUS
 	t = intersect_sphere(ray_origin, light_dir,	clouds_cirrus_radius).y;
 	pos = ray_origin + light_dir * t;
-	distance_fade = exp2(distance_fade_strength * length(pos.xy));
+	distance_fade = exp2(-distance_fade_strength * length(pos.xy));
 	density = clouds_cirrus_density(pos.xz, 0.5);
 	shadow *= exp(-1.00 * distance_fade * clouds_cirrus_extinction_coeff * clouds_cirrus_thickness * rcp(abs(light_dir.y) + eps) * density) * 0.5 + 0.5;
-#endif
+#endif // CLOUDS_CIRRUS
 
 	return vec2(shadow, shadow_cumulus_only);
 }
-#endif
+#endif // PROGRAM_PREPARE && defined CLOUD_SHADOWS
 
 #endif // INCLUDE_LIGHTING_CLOUD_SHADOWS

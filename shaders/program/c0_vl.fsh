@@ -22,8 +22,8 @@ flat in vec3 ambient_color;
 flat in vec3 light_color;
 
 #if defined WORLD_OVERWORLD
-#include "/include/fog/overworld/coeff_struct.glsl"
-flat in AirFogCoefficients air_fog_coeff;
+#include "/include/fog/overworld/parameters.glsl"
+flat in OverworldFogParameters fog_params;
 #endif
 
 // ------------
@@ -36,6 +36,7 @@ uniform sampler3D colortex0; // 3D worley noise
 uniform sampler2D colortex1; // gbuffer data
 uniform sampler2D colortex3; // translucent color
 uniform sampler2D colortex4; // sky map
+uniform sampler2D colortex8; // cloud shadow map
 
 uniform sampler2D depthtex0;
 uniform sampler2D depthtex1;
@@ -52,10 +53,6 @@ uniform sampler2D shadowcolor0;
 
 #ifdef DISTANT_HORIZONS
 uniform sampler2D dhDepthTex;
-#endif
-
-#ifdef CLOUD_SHADOWS
-uniform sampler2D colortex8; // cloud shadow map
 #endif
 
 uniform mat4 gbufferModelView;
@@ -112,13 +109,10 @@ uniform float time_midnight;
 // ------------
 
 #if defined WORLD_OVERWORLD
-#ifdef CLOUD_SHADOWS
-#include "/include/lighting/cloud_shadows.glsl"
-#endif
 #include "/include/fog/overworld/raymarched.glsl"
 #endif
 
-#if defined WORLD_END //|| defined WORLD_NETHER
+#if defined WORLD_END
 #include "/include/fog/end_fog_vl.glsl"
 #endif
 
@@ -182,9 +176,6 @@ void main() {
 			#if defined WORLD_OVERWORLD
 			mat2x3 fog = raymarch_air_fog(world_start_pos, world_end_pos, depth0 == 1.0, skylight, dither);
 			#elif defined WORLD_NETHER
-			//mat2x3 fog = mat2x3(vec3(1.0, 0.4, 0.0), vec3(0.2, 1.0, 1.0));
-			/*mat2x3 fog = raymarch_end_fog(world_start_pos, world_end_pos, depth0 == 1.0, dither);
-			fog[1] *= 1.0 - clamp01(length(fog[0])); //vec3(length(fog[0]), 0.0, 0.0);*/
 			mat2x3 fog = mat2x3(vec3(0.0), vec3(1.0));
 			#elif defined WORLD_END
 			mat2x3 fog = raymarch_end_fog(world_start_pos, world_end_pos, depth0 == 1.0, dither);

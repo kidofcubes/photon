@@ -27,8 +27,8 @@ flat in vec3 ambient_color;
 flat in vec3 light_color;
 
 #ifdef WORLD_OVERWORLD
-#include "/include/fog/overworld/coeff_struct.glsl"
-flat in AirFogCoefficients air_fog_coeff;
+#include "/include/fog/overworld/parameters.glsl"
+flat in OverworldFogParameters fog_params;
 #endif
 
 // ------------
@@ -50,7 +50,6 @@ uniform sampler2D colortex12; // clouds data
 uniform sampler2D colortex13; // rendered translucent layer
 
 #ifdef SHADOW
-
 #ifdef AIR_FOG_COLORED_LIGHT_SHAFTS
 uniform sampler2D shadowcolor0;
 uniform sampler2D shadowtex0;
@@ -120,6 +119,7 @@ uniform float time_midnight;
 
 #include "/include/fog/simple_fog.glsl"
 #include "/include/misc/distant_horizons.glsl"
+#include "/include/misc/material_masks.glsl"
 #include "/include/utility/color.glsl"
 #include "/include/utility/encoding.glsl"
 #include "/include/utility/fast_math.glsl"
@@ -215,11 +215,14 @@ void main() {
 
     bool front_is_dh_terrain = is_distant_horizons_terrain(front_depth, front_depth_dh);
     bool back_is_dh_terrain = is_distant_horizons_terrain(back_depth, back_depth_dh);
+
+	bool is_dh_translucent = front_depth_dh != back_depth_dh;
 #else
 	#define front_depth_dh      front_depth
 	#define back_depth_dh       back_depth
 	#define front_is_dh_terrain false
 	#define back_is_dh_terrain  false
+	#define is_dh_translucent   false
 #endif
 
 	bool is_translucent = front_depth != back_depth;
@@ -300,7 +303,8 @@ void main() {
 			uint material_mask = uint(255.0 * data[1].y);
 			vec3 flat_normal   = decode_unit_vector(data[2]);
 			vec2 light_levels  = data[3];
-			if (material_mask == 1) { // Water
+
+			if (material_mask == MATERIAL_WATER) { // Water
 				vec4 water_color = draw_distant_water(
 				dh_position_screen,
 				dh_position_view,
@@ -336,7 +340,7 @@ void main() {
 
 	// Blend clouds in front of translucents
 	
-	if (is_translucent) {
+	if (is_translucent || is_dh_translucent) {
 		float clouds_dist;
 		vec4 clouds = read_clouds(clouds_dist);
 
@@ -362,6 +366,7 @@ void main() {
 	if (isEyeInWater == 1) {
 		// water fog
 		float LoV = dot(direction_world, light_dir);
+
 		mat2x3 analytic_fog = water_fog_simple(
 			light_color,
 			ambient_color,

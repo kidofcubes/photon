@@ -2,7 +2,6 @@
 #define INCLUDE_SKY_CLOUDS_COMMON
 
 #include "/include/sky/atmosphere.glsl"
-
 #include "/include/utility/color.glsl"
 #include "/include/utility/fast_math.glsl"
 #include "/include/utility/geometry.glsl"
@@ -11,6 +10,55 @@
 #include "/include/utility/sampling.glsl"
 
 uniform float day_factor;
+
+const float clouds_cumulus_radius          = planet_radius + CLOUDS_CUMULUS_ALTITUDE;
+const float clouds_cumulus_thickness       = CLOUDS_CUMULUS_ALTITUDE * CLOUDS_CUMULUS_THICKNESS;
+const float clouds_cumulus_top_radius      = clouds_cumulus_radius + clouds_cumulus_thickness;
+
+const float clouds_altocumulus_radius      = planet_radius + CLOUDS_ALTOCUMULUS_ALTITUDE;
+const float clouds_altocumulus_thickness   = CLOUDS_ALTOCUMULUS_ALTITUDE * CLOUDS_ALTOCUMULUS_THICKNESS;
+const float clouds_altocumulus_top_radius  = clouds_altocumulus_radius + clouds_altocumulus_thickness;
+
+const float clouds_cirrus_radius           = planet_radius + CLOUDS_CIRRUS_ALTITUDE;
+const float clouds_cirrus_thickness        = CLOUDS_CIRRUS_ALTITUDE * CLOUDS_ALTOCUMULUS_THICKNESS;
+const float clouds_cirrus_top_radius       = clouds_cirrus_radius + clouds_cirrus_thickness;
+const float clouds_cirrus_extinction_coeff = 0.15;
+const float clouds_cirrus_scattering_coeff = clouds_cirrus_extinction_coeff;
+
+const float clouds_noctilucent_altitude    = 80000.0;
+const float clouds_noctilucent_radius      = planet_radius + clouds_noctilucent_altitude;
+
+// GAMS Clouds
+const float clouds_cumulus_congestus_radius           = planet_radius + CLOUDS_CUMULUS_CONGESTUS_ALTITUDE;
+const float clouds_cumulus_congestus_thickness        = CLOUDS_CUMULUS_CONGESTUS_ALTITUDE * CLOUDS_CUMULUS_CONGESTUS_THICKNESS;
+const float clouds_cumulus_congestus_top_radius       = clouds_cumulus_congestus_radius + clouds_cumulus_congestus_thickness;
+const float clouds_cumulus_congestus_distance         = CLOUDS_CUMULUS_CONGESTUS_DISTANCE;
+const float clouds_cumulus_congestus_end_distance     = CLOUDS_CUMULUS_CONGESTUS_END_DISTANCE;
+float clouds_cumulus_congestus_extinction_coeff       = 0.16 * (1.0 - 0.5 * rainStrength);
+float clouds_cumulus_congestus_scattering_coeff       = clouds_cumulus_congestus_extinction_coeff * (1.0 - 0.2 * rainStrength);
+
+const float clouds_cumulonimbus_radius                = planet_radius + CLOUDS_CUMULONIMBUS_ALTITUDE;
+const float clouds_cumulonimbus_thickness             = /*CLOUDS_CUMULONIMBUS_ALTITUDE*/ 1146 * CLOUDS_CUMULONIMBUS_THICKNESS;
+const float clouds_cumulonimbus_top_radius            = clouds_cumulonimbus_radius + clouds_cumulonimbus_thickness * CLOUDS_CUMULONIMBUS_END_DISTANCE * 0.00004;
+float clouds_cumulonimbus_distance                    = mix(CLOUDS_CUMULONIMBUS_DISTANCE, 0.0, rainStrength);
+const float clouds_cumulonimbus_end_distance          = CLOUDS_CUMULONIMBUS_END_DISTANCE;
+const float clouds_cumulonimbus_blend_distance        = 6.0;
+const float clouds_cumulonimbus_extinction_coeff      = 0.05 * CLOUDS_CUMULONIMBUS_DENSITY;
+float clouds_cumulonimbus_scattering_coeff            = clouds_cumulonimbus_extinction_coeff * (1.0 - 0.33 * rainStrength);
+
+const float clouds_thunderhead_radius                 = planet_radius + CLOUDS_THUNDERHEAD_ALTITUDE * 0.6;
+const float clouds_thunderhead_thickness              = CLOUDS_THUNDERHEAD_ALTITUDE * CLOUDS_THUNDERHEAD_THICKNESS;
+const float clouds_thunderhead_top_radius             = clouds_thunderhead_radius + clouds_thunderhead_thickness * 15.0;
+
+const float clouds_towering_cumulus_radius            = planet_radius + CLOUDS_TOWERING_CUMULUS_ALTITUDE * 1.5;
+const float clouds_towering_cumulus_thickness         = CLOUDS_TOWERING_CUMULUS_ALTITUDE * CLOUDS_TOWERING_CUMULUS_THICKNESS;
+const float clouds_towering_cumulus_top_radius        = clouds_towering_cumulus_radius + clouds_towering_cumulus_thickness * 7.0;
+
+// GAMS Clouds - Old daily weather variables set in Settings, default use D0 values
+vec2 clouds_towering_cumulus_coverage                 = vec2(CLOUDS_TOWERING_CUMULUS_MIN, CLOUDS_TOWERING_CUMULUS_MAX);
+vec2 clouds_thunderhead_coverage                      = vec2(CLOUDS_THUNDERHEAD_MIN, CLOUDS_THUNDERHEAD_MAX);
+
+// ----
 
 struct CloudsResult {
 	vec3 scattering;
@@ -25,6 +73,35 @@ const CloudsResult clouds_not_hit = CloudsResult(
 );
 
 // ----
+
+// from https://iquilezles.org/articles/gradientnoise/
+vec2 perlin_gradient(vec2 coord) {
+	vec2 i = floor(coord);
+	vec2 f = fract(coord);
+
+	vec2 u  = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+	vec2 du = 30.0 * f * f * ( f *( f - 2.0) + 1.0);
+
+	vec2 g0 = hash2(i + vec2(0.0, 0.0));
+	vec2 g1 = hash2(i + vec2(1.0, 0.0));
+	vec2 g2 = hash2(i + vec2(0.0, 1.0));
+	vec2 g3 = hash2(i + vec2(1.0, 1.0));
+
+	float v0 = dot(g0, f - vec2(0.0, 0.0));
+	float v1 = dot(g1, f - vec2(1.0, 0.0));
+	float v2 = dot(g2, f - vec2(0.0, 1.0));
+	float v3 = dot(g3, f - vec2(1.0, 1.0));
+
+	return vec2(
+	g0 + u.x * (g1 - g0) + u.y * (g2 - g0) + u.x * u.y * (g0 - g1 - g2 + g3) + // d/dx
+	du * (u.yx * (v0 - v1 - v2 + v3) + vec2(v1, v2) - v0)                      // d/dy
+	);
+}
+
+vec2 curl2D(vec2 coord) {
+	vec2 gradient = perlin_gradient(coord);
+	return vec2(gradient.y, -gradient.x);
+}
 
 float clouds_phase_single(float cos_theta) { // Single scattering phase function
 	float forwards_a = klein_nishina_phase(cos_theta, 2600.0); // this gives a nice glow very close to the sun
@@ -59,7 +136,7 @@ vec3 clouds_aerial_perspective(
 
 #if CLOUDS_AERIAL_PERSPECTIVE_BOOST != 0
 	ray_end = mix(ray_origin, ray_end, float(1 << CLOUDS_AERIAL_PERSPECTIVE_BOOST));
-#endif
+#endif // CLOUDS_AERIAL_PERSPECTIVE_BOOST
 
 	if (length_squared(ray_origin) < length_squared(ray_end)) {
 		vec3 trans_0 = atmosphere_transmittance(ray_origin, ray_dir);
@@ -96,4 +173,4 @@ CloudsResult blend_layers(CloudsResult old, CloudsResult new, uint iter) {
 	);
 }
 
-#endif
+#endif // INCLUDE_SKY_CLOUDS_COMMON

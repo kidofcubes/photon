@@ -33,8 +33,8 @@ flat in vec2 atlas_tile_scale;
 #endif
 
 #if defined WORLD_OVERWORLD
-#include "/include/fog/overworld/coeff_struct.glsl"
-flat in AirFogCoefficients air_fog_coeff;
+#include "/include/fog/overworld/parameters.glsl"
+flat in OverworldFogParameters fog_params;
 #endif
 
 // ------------

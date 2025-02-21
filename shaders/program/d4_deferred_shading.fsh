@@ -30,12 +30,13 @@ flat in vec3 light_color;
 flat in vec3 sun_color;
 flat in vec3 moon_color;
 
-#include "/include/fog/overworld/coeff_struct.glsl"
-flat in AirFogCoefficients air_fog_coeff;
+#include "/include/fog/overworld/parameters.glsl"
+flat in OverworldFogParameters fog_params;
 
 #if defined SH_SKYLIGHT
 flat in vec3 sky_sh[9];
 flat in vec3 skylight_up;
+#endif
 #endif
 
 // ------------
@@ -309,6 +310,7 @@ void main() {
 		ivec2 p10 = i + ivec2(1, 0);
 		ivec2 p01 = i + ivec2(0, 1);
 		ivec2 p11 = i + ivec2(1, 1);
+
 		vec4 ambient_00 = texelFetch(colortex6, i, 0);
 		vec4 ambient_10 = texelFetch(colortex6, p10, 0);
 		vec4 ambient_01 = texelFetch(colortex6, p01, 0);
@@ -373,6 +375,7 @@ void main() {
 				flat_normal,
 				light_levels,
 				material.porosity,
+				material_mask,
 				normal,
 				material.albedo,
 				material.f0,
@@ -390,12 +393,10 @@ void main() {
 		float lin_z = screen_to_view_space_depth(combined_projection_matrix_inverse, depth);
 
 		#define depth_weight(reversed_depth) exp2(-10.0 * abs(screen_to_view_space_depth(combined_projection_matrix_inverse, 1.0 - reversed_depth) - lin_z))
-
 		float w00 = depth_weight(ambient_depth_00) * (1.0 - f.x) * (1.0 - f.y);
 		float w10 = depth_weight(ambient_depth_10) * (f.x - f.x * f.y);
 		float w01 = depth_weight(ambient_depth_01) * (f.y - f.x * f.y);
 		float w11 = depth_weight(ambient_depth_11) * (f.x * f.y);
-
 		#undef depth_weight
 
 		float weight_sum = w00 + w10 + w01 + w11;
@@ -404,21 +405,21 @@ void main() {
 			float rcp_weight_sum = rcp(weight_sum);
 			
 			ao = ambient_00.x * w00
-			+ ambient_10.x * w10
-			+ ambient_01.x * w01
-			+ ambient_11.x * w11;
+				+ ambient_10.x * w10
+				+ ambient_01.x * w01
+				+ ambient_11.x * w11;
 			ao *= rcp_weight_sum;
 			
 			ambient_sss = ambient_00.y * w00
-			+ ambient_10.y * w10
-			+ ambient_01.y * w01
-			+ ambient_11.y * w11;
+				+ ambient_10.y * w10
+				+ ambient_01.y * w01
+				+ ambient_11.y * w11;
 			ambient_sss *= rcp_weight_sum;
 			
 			bent_normal = decode_unit_vector(ambient_00.zw) * w00
-			+ decode_unit_vector(ambient_10.zw) * w10
-			+ decode_unit_vector(ambient_01.zw) * w01
-			+ decode_unit_vector(ambient_11.zw) * w11;
+				+ decode_unit_vector(ambient_10.zw) * w10
+				+ decode_unit_vector(ambient_01.zw) * w01
+				+ decode_unit_vector(ambient_11.zw) * w11;
 			// re-normalize
 			float len_sq = length_squared(bent_normal);
 			bent_normal = (len_sq == 0.0) ? flat_normal : bent_normal * inversesqrt(len_sq);
