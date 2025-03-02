@@ -5,7 +5,7 @@ struct CloudsParameters {
 	// Cumulus congestus
 	float cumulus_congestus_blend; // replaces layer 0
 	// Volumetric layer 0
-	vec2  l0_coverage; // x = min, y = max
+	vec2  l0_coverage;
 	vec2  l0_detail_weights;
 	vec2  l0_edge_sharpening;
 	float l0_altitude_scale;
@@ -13,9 +13,8 @@ struct CloudsParameters {
 	float l0_extinction_coeff; // also applies for Cu Con
 	float l0_scattering_coeff; // also applies for Cu Con
 	float l0_shadow;
-	float l0_wind_torn_factor;
 	// Volumetric layer 1
-	vec2  l1_coverage; // x = min, y = max
+	vec2  l1_coverage;
 	vec2  l1_detail_weights;
 	float l1_cumulus_stratus_blend;
 	float l1_extinction_coeff;
@@ -29,6 +28,12 @@ struct CloudsParameters {
 	float crepuscular_rays_amount;
 	// GAMS
 	float cumulonimbus_amount;
+	float towering_cumulus_altitude_scale;
+	vec2 towering_cumulus_detail_weights;
+	vec2 towering_cumulus_edge_sharpening;
+	float thunderhead_altitude_scale;
+	vec2 thunderhead_detail_weights;
+	vec2 thunderhead_edge_sharpening;
 	//float thunderhead_amount;
 	//float towering_cumulus_amount;
 };

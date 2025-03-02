@@ -24,14 +24,14 @@ float clouds_thunderhead_altitude_shaping(float density, float altitude_fraction
 	return density;
 }
 
-float clouds_thunderhead_density(vec3 pos, vec2 detail_weights, vec2 edge_sharpening, float dynamic_thickness) {
+float clouds_thunderhead_density(vec3 pos) {
 	const float wind_angle = CLOUDS_THUNDERHEAD_WIND_ANGLE * degree;
 	const vec2 wind_velocity = CLOUDS_THUNDERHEAD_WIND_SPEED * vec2(cos(wind_angle), sin(wind_angle));
 
 	float r = length(pos);
 	if (r < clouds_thunderhead_radius || r > clouds_thunderhead_top_radius) return 0.0;
 
-	float altitude_fraction = 0.8 * (r - clouds_thunderhead_radius) * rcp(clouds_thunderhead_thickness * dynamic_thickness);
+	float altitude_fraction = (r - clouds_thunderhead_radius) * clouds_params.thunderhead_altitude_scale;
 
 	pos.xz += cameraPosition.xz * CLOUDS_SCALE + wind_velocity * world_age;
 
@@ -64,12 +64,18 @@ float clouds_thunderhead_density(vec3 pos, vec2 detail_weights, vec2 edge_sharpe
 	                  - 0.35 * smoothstep(0.05, 0.5, altitude_fraction) + 0.6;
 
 	float bottom_detail_boost = 1.0 + (1.0 - smoothstep(0.0, 0.6, altitude_fraction)) * 100.0;
-	density -= detail_weights.x * sqr(worley_0) * dampen(clamp01(1.0 - density)) * bottom_detail_boost;
-	density -= detail_weights.y * sqr(worley_1) * dampen(clamp01(1.0 - density)) * detail_fade;
+	density -= clouds_params.thunderhead_detail_weights.x * sqr(worley_0) * dampen(clamp01(1.0 - density)) * bottom_detail_boost;
+	density -= clouds_params.thunderhead_detail_weights.y * sqr(worley_1) * dampen(clamp01(1.0 - density)) * detail_fade;
 
 	// Adjust density so that the clouds are wispy at the bottom and hard at the top
 	density  = max0(density);
-	density  = 1.0 - pow(1.0 - density, mix(edge_sharpening.x, edge_sharpening.y, altitude_fraction));
+	density  = 1.0 - pow(
+		1.0 - density, mix(
+			clouds_params.thunderhead_edge_sharpening.x,
+			clouds_params.thunderhead_edge_sharpening.y, 
+			altitude_fraction
+		)
+	);
 	density *= CLOUDS_ROUGHNESS + 1.9 * smoothstep(0.2, 0.7, altitude_fraction);
 
 	return density;
@@ -78,9 +84,6 @@ float clouds_thunderhead_density(vec3 pos, vec2 detail_weights, vec2 edge_sharpe
 float clouds_thunderhead_optical_depth(
 	vec3 ray_origin,
 	vec3 ray_dir,
-	vec2 detail_weights,
-	vec2 edge_sharpening,
-	float dynamic_thickness,
 	float dither,
 	const uint step_count,
 	bool include_towering
@@ -96,7 +99,7 @@ float clouds_thunderhead_optical_depth(
 
 	for (uint i = 0u; i < step_count; ++i, ray_pos += ray_step.xyz) {
 		ray_step *= step_growth;
-		optical_depth += clouds_thunderhead_density(ray_pos + ray_step.xyz * dither, detail_weights, edge_sharpening, dynamic_thickness) * ray_step.w;
+		optical_depth += clouds_thunderhead_density(ray_pos + ray_step.xyz * dither) * ray_step.w;
 	}
 
 	return optical_depth;
@@ -122,7 +125,6 @@ vec2 clouds_thunderhead_scattering(
 	float powder_effect = clouds_powder_effect(density, cos_theta);
 
 	float phase = clouds_phase_single(cos_theta);
-
 	vec3 phase_g = pow(vec3(0.6, 0.9, 0.3), vec3(1.0 + light_optical_depth));
 
 	// Add height-based darkening
@@ -230,7 +232,7 @@ CloudsResult draw_thunderhead_clouds(
 		vec3 ray_pos = ray_origin + ray_step * i;
 		float r_sample = length(ray_pos);
 
-		float density = clouds_thunderhead_density(ray_pos, detail_weights, edge_sharpening, dynamic_thickness);
+		float density = clouds_thunderhead_density(ray_pos);
 
 		if (density < eps) continue;
 
@@ -248,11 +250,16 @@ CloudsResult draw_thunderhead_clouds(
 		vec2 hash = hash2(fract(ray_pos));
 #endif // PROGRAM_DEFERRED0
 
-		float light_optical_depth  = clouds_thunderhead_optical_depth(ray_pos, light_dir, detail_weights, edge_sharpening, dynamic_thickness, hash.x, lighting_steps, false);
-		float sky_optical_depth    = clouds_thunderhead_optical_depth(ray_pos, sky_dir, detail_weights, edge_sharpening, dynamic_thickness, hash.y, ambient_steps, false);
-		float ground_optical_depth = mix(density, 1.0, clamp01(r_sample/clouds_thunderhead_top_radius * 2.0 - 1.0)) * (r_sample - clouds_thunderhead_radius) / clouds_thunderhead_thickness;
+		float light_optical_depth  = clouds_thunderhead_optical_depth(ray_pos, light_dir, hash.x, lighting_steps, false);
+		float sky_optical_depth    = clouds_thunderhead_optical_depth(ray_pos, sky_dir, hash.y, ambient_steps, false);
 
-		float altitude_fraction = 0.8 * (r_sample - clouds_thunderhead_radius) * rcp(clouds_thunderhead_thickness * dynamic_thickness);
+		float ground_optical_depth = mix(
+			density,
+			1.0,
+			clamp01(r_sample/clouds_thunderhead_top_radius * 2.0 - 1.0)
+		) * (r_sample - clouds_thunderhead_radius) / clouds_thunderhead_thickness;
+		
+		float altitude_fraction = (r_sample - clouds_thunderhead_radius) * clouds_params.thunderhead_altitude_scale;
 
 		scattering += clouds_thunderhead_scattering(
 			density,
