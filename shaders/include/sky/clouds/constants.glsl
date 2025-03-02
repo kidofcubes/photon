@@ -26,7 +26,7 @@ const float clouds_cumulus_congestus_thickness        = CLOUDS_CUMULUS_CONGESTUS
 const float clouds_cumulus_congestus_top_radius       = clouds_cumulus_congestus_radius + clouds_cumulus_congestus_thickness;
 const float clouds_cumulus_congestus_distance         = CLOUDS_CUMULUS_CONGESTUS_DISTANCE;
 const float clouds_cumulus_congestus_end_distance     = CLOUDS_CUMULUS_CONGESTUS_END_DISTANCE;
-float clouds_cumulus_congestus_extinction_coeff       = 0.16 * (1.0 - 0.5 * rainStrength);
+float clouds_cumulus_congestus_extinction_coeff       = 0.08;
 float clouds_cumulus_congestus_scattering_coeff       = clouds_cumulus_congestus_extinction_coeff * (1.0 - 0.2 * rainStrength);
 
 const float clouds_cumulonimbus_radius                = planet_radius + CLOUDS_CUMULONIMBUS_ALTITUDE;

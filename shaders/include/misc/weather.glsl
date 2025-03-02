@@ -52,8 +52,8 @@ Weather get_weather() {
 	weather.temperature -= 0.2 * time_sunrise + 0.2 * time_midnight;
 
 	// Biome-based variation 
-	//weather.temperature += biome_temperature * biome_temperature_influence;
-	//weather.humidity += biome_humidity * biome_humidity_influence;
+	weather.temperature += biome_temperature * biome_temperature_influence;
+	weather.humidity += biome_humidity * biome_humidity_influence;
 
 	// Weather-based variation
 	weather.humidity += wetness;
@@ -96,8 +96,17 @@ vec2 clouds_l0_detail_weights(Weather weather, float cumulus_stratus_blend) {
 	return mix(
 		vec2(0.33, 0.40) * (1.0 + 0.5 * wind_torn_factor),
 		vec2(0.07, 0.10),
-		sqr(cumulus_stratus_blend)
+		vec2(sqr(cumulus_stratus_blend), cumulus_stratus_blend)
 	) * CLOUDS_CUMULUS_DETAIL_STRENGTH;
+}
+
+vec2 clouds_l0_edge_sharpening(Weather weather, float cumulus_stratus_blend) {
+	return mix(vec2(3.0, 8.0), vec2(1.0, 2.0), sqr(cumulus_stratus_blend));
+}
+
+float clouds_l0_altitude_scale(Weather weather, vec2 coverage) {
+	float dynamic_thickness = mix(0.5, 1.0, smoothstep(0.4, 0.6, dot(coverage, vec2(0.25, 0.75))));
+	return 0.8 * rcp(dynamic_thickness * clouds_cumulus_thickness);
 }
 
 float clouds_l1_cumulus_stratus_blend(Weather weather) {
@@ -158,8 +167,11 @@ CloudsParameters get_clouds_parameters(Weather weather) {
 	params.cumulus_congestus_blend = clouds_cumulus_congestus_blend(weather);
 
 	// Volumetric layer 0 - cumulus/stratocumulus/stratus
-	params.l0_coverage              = clouds_l0_coverage(weather, params.cumulus_congestus_blend);
 	params.l0_cumulus_stratus_blend = clouds_l0_cumulus_stratus_blend(weather);
+	params.l0_coverage              = clouds_l0_coverage(weather, params.cumulus_congestus_blend);
+	params.l0_detail_weights        = clouds_l0_detail_weights(weather, params.l0_cumulus_stratus_blend);
+	params.l0_edge_sharpening       = clouds_l0_edge_sharpening(weather, params.l0_cumulus_stratus_blend);
+	params.l0_altitude_scale        = clouds_l0_altitude_scale(weather, params.l0_coverage);
 
 	// Volumetric layer 1 - altocumulus/altostratus/undulatus
 	params.l1_cumulus_stratus_blend = clouds_l1_cumulus_stratus_blend(weather);
@@ -185,19 +197,13 @@ CloudsParameters get_clouds_parameters(Weather weather) {
 
 	params.crepuscular_rays_amount = cube(linear_step(0.4, 0.75, dot(params.l0_coverage, vec2(0.25, 0.75))));
 
-	float dynamic_thickness = mix(0.5, 1.0, smoothstep(0.4, 0.6, dot(params.l0_coverage, vec2(0.25, 0.75))));
-	params.l0_altitude_scale = 0.8 * rcp(dynamic_thickness * clouds_cumulus_thickness);
-
-	params.l0_detail_weights = clouds_l0_detail_weights(weather, params.l0_cumulus_stratus_blend);
-	params.l0_edge_sharpening = mix(vec2(3.0, 8.0), vec2(1.0, 2.0), sqr(params.l0_cumulus_stratus_blend));
-
 	// GAMS TO DO - use weather calculation for GAMS clouds ?
-	
+	float dynamic_thickness_old = mix(0.5, 1.0, smoothstep(0.4, 0.6, dot(params.l0_coverage, vec2(0.25, 0.75))));
 	params.cumulonimbus_amount = clouds_cumulonimbus_amount();
-	params.towering_cumulus_altitude_scale = 0.8 * rcp(dynamic_thickness * clouds_towering_cumulus_thickness);
+	params.towering_cumulus_altitude_scale = 0.8 * rcp(dynamic_thickness_old * clouds_towering_cumulus_thickness);
 	params.towering_cumulus_detail_weights = mix(vec2(0.33, 0.40), vec2(0.25, 0.20), sqr(params.l0_cumulus_stratus_blend)) * CLOUDS_TOWERING_CUMULUS_DETAIL_STRENGTH;
 	params.towering_cumulus_edge_sharpening = mix(vec2(3.0, 8.0), vec2(1.0, 2.0), params.l0_cumulus_stratus_blend);
-	params.thunderhead_altitude_scale = 0.8 * rcp(dynamic_thickness * clouds_thunderhead_thickness);
+	params.thunderhead_altitude_scale = 0.8 * rcp(dynamic_thickness_old * clouds_thunderhead_thickness);
 	params.thunderhead_detail_weights = mix(vec2(0.01, 0.05), vec2(0.25, 0.20), sqr(clouds_params.l0_cumulus_stratus_blend)) * CLOUDS_THUNDERHEAD_DETAIL_STRENGTH;
 	params.thunderhead_edge_sharpening = mix(vec2(3.0, 8.0), vec2(1.0, 2.0), clouds_params.l0_cumulus_stratus_blend);
 	
