@@ -143,6 +143,11 @@ option.END_GLOW                        = End Glow
 option.END_GLOW.comment                = Wavery glowing effect in the End. Requires Volumetric Lighting
 option.END_GLOW_INTENSITY              = End Glow Intensity
 option.END_GLOW_INTENSITY.comment      = Controls the intensity of the glow in the End dimension. Higher values make the glow more pronounced.
+option.PLAYER_DISPLACEMENT             = Waving Nearby Blocks
+screen.player_displacement             = Waving Nearby Blocks Settings
+option.PLAYER_DISPLACEMENT.comment     = Player makes nearby blocks moves on his path
+option.PLAYER_DISPLACEMENT_PLANTS_STRENGTH = Plants Displacement Strength Effect
+option.PLAYER_DISPLACEMENT_LEAVES_STRENGTH = Leaves Displacement Strength Effect
 
 option.WORLD_CURVATURE          = World Curvature
 option.DISABLE_FRUSTUM_CULLING  = Disable Frustum Culling
