@@ -347,6 +347,7 @@ option.ATMOSPHERE_SATURATION_BOOST.comment = Increases the saturation of the sky
 option.ATMOSPHERE_SATURATION_BOOST_INTENSITY = Atmosphere Saturation Boost Intensity
 option.ATMOSPHERE_SATURATION_BOOST_INTENSITY.comment = Adjust the intensity of Atmosphere Saturation Boost
 option.CREPUSCULAR_RAYS                = Crepuscular Rays
+option.LIGHTNING_FLASH                 = Lightning Flash
 
 # Sun settings
 option.VANILLA_SUN                     = §6☀§r Vanilla Sun
