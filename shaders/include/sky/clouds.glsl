@@ -10,6 +10,17 @@
 #include "clouds/towering_cumulus.glsl"
 #include "clouds/thunderhead.glsl"
 
+bool clouds_early_exit(
+	CloudsResult result,
+	float r,
+	float layer_radius
+) {
+	bool has_congestus = clouds_params.cumulus_congestus_blend > eps;
+	
+	return result.transmittance < 1e-3 && r < layer_radius
+		&& (result.apparent_distance < clouds_cumulus_congestus_distance || !has_congestus);
+}
+
 #if !defined CLOUDS_CUMULUS && !defined CLOUDS_CUMULUS_CONGESTUS && !defined CLOUDS_CUMULONIMBUS && !defined CLOUDS_ALTOCUMULUS && !defined CLOUDS_CIRRUS && !defined CLOUDS_TOWERING_CUMULUS && !defined CLOUDS_THUNDERHEAD
 CloudsResult draw_clouds(
 	vec3 air_viewer_pos,
@@ -125,7 +136,7 @@ CloudsResult draw_clouds(
 		switch (cloud_type) {
 #ifdef CLOUDS_CUMULUS_CONGESTUS
 		case 0:
-			if((clouds_params.cumulus_congestus_blend < 0.5) && (clouds_params.cumulus_congestus_blend >= 1e-3)) {
+			if((clouds_params.cumulus_congestus_blend > eps) && (clouds_params.cumulus_congestus_blend >= 1e-3)) {
 				CloudsResult result_cu_con = draw_cumulus_congestus_clouds(air_viewer_pos, ray_dir, clear_sky, distance_to_terrain, dither);
 
 				// fade existing clouds into congestus
@@ -150,14 +161,22 @@ CloudsResult draw_clouds(
 
 #ifdef CLOUDS_CUMULUS
 		case 1:
-			if((clouds_params.cumulus_congestus_blend < 0.5) && (max(clouds_params.l0_coverage.x, clouds_params.l0_coverage.y) >= 1e-3)) {
+			if(max(clouds_params.l0_coverage.x, clouds_params.l0_coverage.y) >= 1e-3) {
 				CloudsResult cumulus_result = draw_cumulus_clouds(air_viewer_pos, ray_dir, clear_sky, distance_to_terrain, dither);
-				
+				if (clouds_early_exit(result, r, clouds_cumulus_radius)) {
+					result = blend_layers(result, cumulus_result, i);
+					return result;
+				}
+
 				// Add altocumulus within cumulus function if enabled
 				#ifdef CLOUDS_ALTOCUMULUS
 					if(max(clouds_params.l1_coverage.x, clouds_params.l1_coverage.y) >= 1e-3) {
 						CloudsResult alto_result = draw_altocumulus_clouds(air_viewer_pos, ray_dir, clear_sky, distance_to_terrain, dither);
 						cumulus_result = blend_layers(cumulus_result, alto_result, i);
+						if (clouds_early_exit(result, r, clouds_altocumulus_radius)) {
+							result = blend_layers(result, cumulus_result, i);
+							return result;
+						}
 					}
 				#endif // CLOUDS_ALTOCUMULUS
 
