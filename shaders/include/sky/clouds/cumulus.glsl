@@ -68,13 +68,11 @@ float clouds_cumulus_density(vec3 pos) {
 	if (density < eps) return 0.0;
 
 #ifndef PROGRAM_PREPARE
-	// Curl noise used to warp the 3D noise into swirling shapes
-	vec3 curl = (0.181 * CLOUDS_CUMULUS_CURL_STRENGTH) * texture(colortex7, 0.002 * pos).xyz * smoothstep(0.4, 1.0, 1.0 - altitude_fraction) * (1.0 + 3.0 * cube(clouds_params.l0_cumulus_stratus_blend));
 	vec3 wind = vec3(wind_velocity * world_age, 0.0).xzy;
 
 	// 3D worley noise for detail
-	float worley_0 = texture(colortex6, (pos + 0.2 * wind) * 0.0011 + curl * 1.0).x;
-	float worley_1 = texture(colortex6, (pos + 0.4 * wind) * 0.005 + curl * 3.0).x;
+	float worley_0 = texture(SAMPLER_WORLEY_BUBBLY, (pos + 0.2 * wind) * 0.0009).x;
+	float worley_1 = texture(SAMPLER_WORLEY_SWIRLEY, (pos + 0.4 * wind) * 0.005).x;
 #else
 	const float worley_0 = 0.5;
 	const float worley_1 = 0.5;

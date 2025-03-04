@@ -35,7 +35,10 @@ flat in CloudsParameters clouds_params;
 // ------------
 
 uniform sampler3D colortex6; // 3D worley noise
+#define SAMPLER_WORLEY_BUBBLY colortex6
 uniform sampler3D colortex7; // 3D curl noise
+#define SAMPLER_WORLEY_SWIRLEY colortex7
+
 uniform sampler2D colortex8; // cloud shadow map
 
 uniform sampler3D depthtex0; // atmospheric scattering LUT
