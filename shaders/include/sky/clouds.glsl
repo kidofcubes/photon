@@ -205,7 +205,8 @@ CloudsResult draw_clouds(
 #ifdef CLOUDS_CUMULONIMBUS
 		case 2:
 			if(clouds_params.cumulonimbus_amount >= 1e-3) {
-				result = blend_layers(result, draw_cumulonimbus_clouds(air_viewer_pos, ray_dir, clear_sky, distance_to_terrain, dither), i);
+				CloudsResult result_cn = draw_cumulonimbus_clouds(air_viewer_pos, ray_dir, clear_sky, distance_to_terrain, dither);
+				result = blend_layers(result, result_cn, i);
 				if (result.transmittance < 1e-3) return result;
 			}
 			break;

@@ -1,4 +1,4 @@
-#ifndef INCLUDE_FOG_AIR_FOG_VL
+#if !defined INCLUDE_FOG_AIR_FOG_VL
 #define INCLUDE_FOG_AIR_FOG_VL
 
 #include "/include/fog/overworld/constants.glsl"
@@ -20,7 +20,7 @@ vec2 air_fog_density(vec3 world_pos) {
 	density *= linear_step(air_fog_volume_bottom, SEA_LEVEL, world_pos.y);
 
 #ifdef AIR_FOG_CLOUDY_NOISE
-
+	
 	// Controls how fast the clouds move (higher = faster)
 	// x = horizontal movement, z = depth movement
 	const vec3 wind = 0.0001 * AIR_FOG_CLOUDY_NOISE_CLOUD_SPEED * vec3(AIR_FOG_CLOUDY_NOISE_CLOUD_X, 0.0, AIR_FOG_CLOUDY_NOISE_CLOUD_Z);

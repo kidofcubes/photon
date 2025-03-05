@@ -1176,6 +1176,9 @@ const float wetnessHalflife         = 70.0;
   #ifdef USE_SEPARATE_ENTITY_DRAWS
   #endif
 
+  #ifdef FXAA
+  #endif
+
   // Not available on OF
   #ifndef IS_IRIS
     #undef USE_SEPARATE_ENTITY_DRAWS
