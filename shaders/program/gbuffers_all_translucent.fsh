@@ -495,7 +495,7 @@ void main() {
 		adjusted_light_levels *= mix(0.7, 1.0, material_ao);
 
 	#ifdef DIRECTIONAL_LIGHTMAPS
-		adjusted_light_levels *= get_directional_lightmaps(position_scene, normal);
+		adjusted_light_levels *= get_directional_lightmaps(normal, position_scene, light_levels);
 	#endif
 #endif
 
