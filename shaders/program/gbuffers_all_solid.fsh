@@ -281,7 +281,7 @@ void main() {
 #endif
 
 #if defined PROGRAM_GBUFFERS_ENTITIES
-	base_color.rgb = mix(base_color.rgb, entityColor.rgb, entityColor.a);
+	if (material_mask != 102) base_color.rgb = mix(base_color.rgb, entityColor.rgb, entityColor.a);
 #endif
 
 #if defined PROGRAM_GBUFFERS_BLOCK

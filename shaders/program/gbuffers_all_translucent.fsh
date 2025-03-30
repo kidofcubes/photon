@@ -241,7 +241,9 @@ Material get_water_material(
 			texture_highlight = 0;
 		#endif
 	#endif
-
+#if defined PROGRAM_GBUFFERS_ENTITIES_TRANSLUCENT
+ 		if (material_mask == 80u) base_color = vec4(1.0);
+ #endif
 	// Water absorption
 
 	#if defined (PHYSICS_MOD_OCEAN) && defined (PHYSICS_OCEAN)

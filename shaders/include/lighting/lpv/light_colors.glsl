@@ -32,7 +32,7 @@ const vec3[64] light_color = vec3[64](
 	vec3(1.00, 0.18, 0.10) * vec3(1.00, 0.18, 0.10) * 3.5, // Redstone block
 	vec3(1.00, 0.10, 1.00) * vec3(1.00, 0.10, 1.00) * 3.0, // Purple weak light
 	vec3(0.10, 0.10, 1.00) *  3.3, // Lapis block
-	vec3(1.00, 1.00, 1.00) * vec3(1.00, 1.00, 1.00) * 64.0, // Lightning rod
+	vec3(1.00, 1.00, 1.00) * vec3(1.00, 1.00, 1.00) * 16.0, // Lightning rod
 	vec3(0.60, 0.10, 1.00) * vec3(0.60, 0.10, 1.00) * 12.0, // Nether portal
 	vec3(0.0),  // End portal
 	vec3(1.0, 0.1, 0.1) * vec3(1.0, 0.1, 0.1) *  1.5, // Red
@@ -51,7 +51,7 @@ const vec3[64] light_color = vec3[64](
 	vec3(0.9, 0.9, 0.9) * vec3(0.9, 0.9, 0.9) * 1.0, // White
 	vec3(0.3, 0.3, 0.3) * vec3(0.3, 0.3, 0.3) * 1.0, // Gray
 	vec3(0.7, 0.7, 0.7) * vec3(0.7, 0.7, 0.7) * 1.0,  // Light gray
-	vec3(1.00, 1.00, 1.00) * 256.0, // Lightning rod
+	vec3(1.00, 1.00, 1.00) * 16.0, // Lightning rod
 	vec3(0.0),  // Unused
 	vec3(0.0),  // Unused
 	vec3(0.0),  // Unused

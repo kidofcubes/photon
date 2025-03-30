@@ -119,6 +119,14 @@ void main() {
 	material_mask = 32;
 #endif
 
+#if defined PROGRAM_GBUFFERS_ENTITIES_TRANSLUCENT
+	if (material_mask == 102) material_mask = 80;
+#endif
+
+#if defined PROGRAM_GBUFFERS_ENTITIES_TRANSLUCENT
+	if (material_mask == 80u) base_color = vec4(1.0);
+#endif
+
 #if defined PROGRAM_GBUFFERS_ENTITIES || defined PROGRAM_GBUFFERS_HAND
 	// Calculate local uv used to fix hardcoded emission on some handheld/dropped items
 	uv_local = sign(uv - mc_midTexCoord) * 0.5 + 0.5;

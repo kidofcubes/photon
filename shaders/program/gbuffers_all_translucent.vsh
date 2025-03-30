@@ -191,6 +191,10 @@ void main() {
 	if (gl_Color.r > gl_Color.g && gl_Color.g < 0.6 && gl_Color.b > 0.4) material_mask = 47;
 #endif
 
+#if defined PROGRAM_GBUFFERS_ENTITIES_TRANSLUCENT
+ 	if (material_mask == 102) material_mask = 80;
+ #endif
+
 #if defined PROGRAM_GBUFFERS_WATER
 	// Fix issue where the normal of the bottom of the water surface is flipped
 	if (dot(position_scene, tbn[2]) > 0.0) tbn[2] = -tbn[2];

@@ -650,7 +650,11 @@ Material material_from(vec3 albedo_srgb, uint material_mask, vec3 world_pos, vec
 						} else { // 39
 							#ifdef HARDCODED_EMISSION
 							// Lava
-							material.emission = 4.0 * albedo_sqrt * (0.2 + 0.8 * isolate_hue(hsl, 30.0, 15.0)) * step(0.4, hsl.y);
+							material.emission = LAVA_EMISSION_I * 4.0 * albedo_sqrt * (0.2 + 0.8 * isolate_hue(hsl, 30.0, 15.0)) * step(0.4, hsl.y);
+
+							#if defined LAVA_EMISSION_RGB && !defined RENDERTYPE_ENTITY
+    						material.albedo = float(material.albedo) * vec3(LAVA_EMISSION_R, LAVA_EMISSION_G, LAVA_EMISSION_B);
+							#endif
 
 							#if defined WORLD_END && defined END_COLORED_LIGHTING
 							material.emission = -1.0 * albedo_sqrt * (0.2 + 0.8 * isolate_hue(hsl, 30.0, 15.0)) * step(0.4, hsl.y);
@@ -733,7 +737,7 @@ Material material_from(vec3 albedo_srgb, uint material_mask, vec3 world_pos, vec
 						} else { // 45
 							#ifdef HARDCODED_EMISSION
 							// End portal frame
-							material.emission = 0.33 * material.albedo * isolate_hue(hsl, 120.0, 50.0);
+							material.emission = 0.45 * albedo_sqrt * isolate_hue(hsl, 120.0, 50.0) + 0.45 * albedo_sqrt * isolate_hue(hsl,50.0, 50.0) * step(0.8, hsl.y);
 							#endif
 							#ifdef HARDCODED_SPECULAR
 							float smoothness = 0.45 * smoothstep(0.01, 0.7, hsl.z);

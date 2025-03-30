@@ -61,8 +61,14 @@ uniform vec3 light_dir;
 
 #ifdef COLORED_LIGHTS
 writeonly uniform uimage3D voxel_img;
-
 uniform int renderStage;
+#ifdef COLORED_LIGHTS_ENTITIES
+uniform int blockEntityId;
+uniform int entityId;
+#ifdef IS_IRIS
+uniform int currentRenderedItemId;
+#endif
+#endif
 #endif
 
 // ------------
@@ -82,7 +88,39 @@ void main() {
 	tint          = gl_Color.rgb;
 
 #ifdef COLORED_LIGHTS
-	update_voxel_map(material_mask);
+
+	#ifdef COLORED_LIGHTS_ENTITIES
+
+	if ((renderStage == MC_RENDER_STAGE_ENTITIES || renderStage == MC_RENDER_STAGE_BLOCK_ENTITIES)) {
+
+		#ifdef IS_IRIS
+		if (currentRenderedItemId > 0 && entityId != 10103) material_mask = uint(currentRenderedItemId - 10000);
+		else
+		#endif
+
+		if (entityId > 0) material_mask = uint(entityId - 10000);
+		else if (blockEntityId > 0) material_mask = uint(blockEntityId - 10000);
+		else material_mask = 181u; // Transparent
+
+		if (100u <= material_mask && material_mask < 164u ) {
+			if (material_mask == 102u) material_mask = 80u; // Lightning
+			else if (material_mask == 103u) material_mask = 181u; // Player
+			else if (material_mask == 104u) material_mask = 48u; // Drowned
+		#ifdef WORLD_END
+			else if (material_mask == 105u) material_mask = 62u; // Dragon breath
+		#endif
+		}
+		//else if (264u <= material_mask && material_mask < 280u) material_mask += 32u; // Candle Items
+	} else if (renderStage == MC_RENDER_STAGE_PARTICLES) {
+		// Make enderman/nether portal particles glow
+		if (gl_Color.r > gl_Color.g && gl_Color.g < 0.6 && gl_Color.b > 0.4) material_mask = 47u;
+		else material_mask = 27u;
+	}
+	#endif
+
+	if (renderStage != MC_RENDER_STAGE_HAND_SOLID && renderStage != MC_RENDER_STAGE_HAND_TRANSLUCENT && material_mask != 181u) {
+		update_voxel_map(material_mask);
+	}
 #endif
 
 	bool is_top_vertex = uv.y < mc_midTexCoord.y;

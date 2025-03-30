@@ -5,7 +5,7 @@
 #include "/include/lighting/lpv/light_colors.glsl"
 
 bool is_emitter(uint block_id) {
-	return 32u <= block_id && block_id < 64u || block_id > 184u && block_id < 192u || block_id > 191u && block_id < 240u ;
+	return 32u <= block_id && block_id < 64u || block_id > 184u && block_id < 192u || block_id > 191u && block_id < 240u || block_id == 182u;
 }
 
 bool is_translucent(uint block_id) {
@@ -29,6 +29,10 @@ vec3 get_emitted_light(uint block_id) {
 	if (is_emitter(block_id)) {
 		if (32u <= block_id && block_id < 64u) {
 		return texelFetch(light_data_sampler, ivec2(int(block_id) - 32, 0), 0).rgb;
+		} else if (block_id == 182u) {
+			if (block_id == 182) {
+		return vec3(1.0, 0.0, 0.9) * 2;
+			}
 		} else if (block_id > 184u && block_id < 192u) {
 			#ifdef GLOWING_ORE
 			if (block_id == 185) {
