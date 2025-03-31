@@ -85,6 +85,8 @@ const float wetnessHalflife         = 70.0;
   #define COLORED_LIGHTS_VANILLA_LIGHTMAP_CONTRIBUTION
   #define GLOWING_ORE
   #define COLORED_LIGHTS_ENTITIES
+  #define COLORED_LIGHTS_FOG
+  #define COLORED_LIGHTS_CLOUDS
 //#define END_COLORED_LIGHTING
 //#define LAVA_EMISSION_RGB
 
@@ -1130,6 +1132,12 @@ const float wetnessHalflife         = 70.0;
   #endif
 
   #ifdef COLORED_LIGHTS
+  #endif
+
+  #ifdef COLORED_LIGHTS_FOG
+  #endif
+
+  #ifdef COLORED_LIGHTS_CLOUDS
   #endif
 
   #ifdef MOON_PHASE_AFFECTS_BRIGHTNESS

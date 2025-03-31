@@ -161,6 +161,106 @@ vec2 clouds_cumulus_scattering(
 	return scattering * scattering_integral_times_density;
 }
 
+#if defined COLORED_LIGHTS && defined COLORED_LIGHTS_CLOUDS
+vec3 clouds_cumulus_lpv_scattering(
+	vec3  ray_pos,
+	vec3  ray_step,
+	vec3  air_viewer_pos,
+	float distance_to_terrain,
+	float density,
+	float step_length,
+	vec2  detail_weights,
+	vec2  edge_sharpening,
+	float dynamic_thickness,
+	vec2  dither,
+	const uint lighting_steps,
+	out float step_transmittance
+) {
+	vec3 lpv_scattering = vec3(0.0);
+	vec3 ray_pos_relative = ray_pos;// - air_viewer_pos;
+	ray_pos_relative.y -= planet_radius;
+
+	/*if (distance_to_terrain >= 0.0 && length(ray_pos_relative) > distance_to_terrain) {
+		vec3 prev_ray_pos = ray_pos_relative - ray_step;
+		if (length(prev_ray_pos) > distance_to_terrain || min_of(prev_ray_pos) < 0.0) return lpv_scattering;
+		else ray_pos_relative = prev_ray_pos;
+	}*/
+
+	vec3 scene_pos = ray_pos_relative;
+	scene_pos /= CLOUDS_SCALE;
+	scene_pos.y -= (eyeAltitude - SEA_LEVEL);
+
+	//lpv_scattering += get_lpv_fog(ray_pos vec3(0.0, CLOUDS_SCALE * (eyeAltitude - SEA_LEVEL) + planet_radius, 0.0));
+	vec3 voxel_pos = scene_to_voxel_space(scene_pos);
+	if (!is_inside_voxel_volume(voxel_pos)) return lpv_scattering;
+
+	vec3 lpv_light = get_lpv_basic_voxel(voxel_pos, scene_pos) * COLORED_LIGHT_I;
+
+	if (max_of(lpv_light) < 1e-3) return lpv_scattering;
+	//lpv_scattering *= step_transmittance;
+
+	vec3  ray_dir            = normalize(ray_step);
+	//vec3  light_dir          = /*normalize(vec3(1.0, 1.0, 1.0));*/ normalize(get_lpv_direction(scene_pos, lpv_light));
+	vec3  light_dir          = normalize(get_lpv_direction_clouds(scene_pos, dither));
+	if (abs(length(light_dir) - 1.0) > eps) light_dir = normalize(light_dir - vec3(0.0, 1e-2, 0.0));
+	//vec3 light_dir = vec3(0.0, -1.0, 0.0);
+	float cos_theta          = min(/*0.8;*/dot(ray_dir, light_dir), 0.95);
+
+	float extinction_coeff   = 0.8 * CLOUDS_CUMULUS_DENSITY;
+	float scattering_coeff   = extinction_coeff;
+
+	float light_optical_depth  = clouds_cumulus_optical_depth(ray_pos, light_dir, dither.x, lighting_steps);
+	//float light_optical_depth = 0.0;
+	float scatter_amount = scattering_coeff;
+	float extinct_amount = extinction_coeff;
+	step_transmittance = exp(density * -extinction_coeff * step_length);
+	float scattering_integral_times_density = (1.0 - step_transmittance) / extinction_coeff;
+
+	float powder_effect = clouds_powder_effect(density + density * clouds_params.l0_cumulus_stratus_blend, cos_theta);
+
+	float phase = clouds_phase_single(cos_theta);
+	vec3  phase_g = pow(vec3(0.6, 0.9, 0.3), vec3(1.0 + light_optical_depth));
+
+	//lpv_scattering = lpv_light * scatter_amount;
+
+	for (uint i = 0u; i < 8u; ++i) {
+		lpv_scattering += scatter_amount * exp(-extinct_amount * light_optical_depth) * phase;
+
+		scatter_amount *= 0.55 * mix(lift(clamp01(scattering_coeff / 0.1), 0.33), 1.0, cos_theta * 0.5 + 0.5) * powder_effect;
+		extinct_amount *= 0.4;
+		phase_g *= 0.8;
+
+		powder_effect = mix(powder_effect, sqrt(powder_effect), 0.5);
+
+		phase = clouds_phase_multi(cos_theta, phase_g);
+	}
+
+	return lpv_scattering * lpv_light * scattering_integral_times_density;//* density * step_length;
+}
+#endif
+
+#if defined SHADOW && defined TERRAIN_SHADOWS_ON_CLOUDS
+vec3 clouds_cumulus_terrain_shadow(vec3 ray_pos) {
+	ivec2 shadow_texel = ivec2(shadow_screen_pos.xy * shadowMapResolution * MC_SHADOW_QUALITY);
+
+	#ifdef AIR_FOG_COLORED_LIGHT_SHAFTS
+
+	float depth0 = texelFetch(shadowtex0, shadow_texel, 0).x;
+		float depth1 = texelFetch(shadowtex1, shadow_texel, 0).x;
+		vec3  color = clamp01(texelFetch(shadowcolor0, shadow_texel, 0).rgb * 4.0);
+		float color_weight = step(depth0, shadow_screen_pos.z) * step(eps, max_of(color));
+
+		color = color * color_weight + (1.0 - color_weight);
+
+		vec3 shadow = step(shadow_screen_pos.z, depth1) * color;
+		shadow = (clamp01(shadow_screen_pos) == shadow_screen_pos) ? shadow : vec3(1.0);
+	#else
+		float depth1 = texelFetch(shadowtex1, shadow_texel, 0).x;
+		float shadow = step(float(clamp01(shadow_screen_pos) == shadow_screen_pos) * shadow_screen_pos.z, depth1);
+	#endif
+}
+#endif
+
 CloudsResult draw_cumulus_clouds(
 	vec3 air_viewer_pos,
 	vec3 ray_dir,
@@ -207,7 +307,9 @@ CloudsResult draw_cumulus_clouds(
 	vec3 ray_origin = air_viewer_pos + ray_dir * (dists.x + step_length * dither);
 
 	vec2 scattering = vec2(0.0); // x: direct light, y: skylight
+	vec3 lpv_scattering = vec3(0.0);
 	float transmittance = 1.0;
+	float lpv_transmittance = 1.0;
 
 	float distance_sum = 0.0;
 	float distance_weight_sum = 0.0;
@@ -270,7 +372,27 @@ CloudsResult draw_cumulus_clouds(
 			bounced_light
 		) * transmittance;
 
+#if defined COLORED_LIGHTS && defined COLORED_LIGHTS_CLOUDS
+	float lpv_step_transmittance;
+	float dynamic_thickness = mix(0.5, 1.0, smoothstep(0.4, 0.6, dot(clouds_params.l0_coverage, vec2(0.25, 0.75))));
+		lpv_scattering += clouds_cumulus_lpv_scattering(
+			ray_pos,
+			air_viewer_pos,
+			ray_origin,
+			distance_to_terrain,
+			density,
+			step_length,
+			clouds_params.l0_detail_weights,
+			clouds_params.l0_edge_sharpening,
+			dynamic_thickness,
+			hash,
+			lighting_steps,
+			lpv_step_transmittance
+		) * transmittance;
+#endif
+
 		transmittance *= step_transmittance;
+		//lpv_transmittance *= lpv_step_transmittance;
 
 		// Update distance to cloud
 		distance_sum += distance_to_sample * density;
@@ -284,9 +406,12 @@ CloudsResult draw_cumulus_clouds(
 
 	// Remap the transmittance so that min_transmittance is 0
 	float clouds_transmittance = linear_step(min_transmittance, 1.0, transmittance);
+	//light_color *= (distance_to_terrain < 0.0) ? 1.0 : 1.0 - pow(clouds_transmittance, 0.2);
 
 	vec3 clouds_scattering = scattering.x * light_color + scattering.y * sky_color;
-	     clouds_scattering = clouds_aerial_perspective(clouds_scattering, clouds_transmittance, air_viewer_pos, ray_origin, ray_dir, clear_sky);
+	/*if (distance_to_terrain < 0.0)*/ clouds_scattering = clouds_aerial_perspective(clouds_scattering, clouds_transmittance, distance_to_terrain, air_viewer_pos, ray_origin, ray_dir, clear_sky);
+
+	clouds_scattering += lpv_scattering;
 
 	float apparent_distance = (distance_weight_sum == 0.0)
 		? 1e6

@@ -18,8 +18,8 @@ float clouds_cumulus_congestus_altitude_shaping(float density, float altitude_fr
 }
 
 float clouds_cumulus_congestus_density(vec3 pos) {
-	const float wind_angle = CLOUDS_CUMULUS_WIND_ANGLE * degree;
-	const vec2 wind_velocity = CLOUDS_CUMULUS_WIND_SPEED * vec2(cos(wind_angle), sin(wind_angle));
+	const float wind_angle = CLOUDS_CUMULUS_CONGESTUS_WIND_ANGLE * degree;
+	const vec2 wind_velocity = CLOUDS_CUMULUS_CONGESTUS_WIND_SPEED * vec2(cos(wind_angle), sin(wind_angle));
 
 	float r = length(pos);
 	if (r < clouds_cumulus_congestus_radius || r > clouds_cumulus_congestus_top_radius) return 0.0;
@@ -238,7 +238,7 @@ CloudsResult draw_cumulus_congestus_clouds(
 
 	// Aerial perspective
 	vec3 clouds_scattering = scattering.x * light_color + scattering.y * sky_color;
-	if (distance_to_terrain < 0.0) clouds_scattering = clouds_aerial_perspective(clouds_scattering, clouds_transmittance, air_viewer_pos, ray_origin, ray_dir, clear_sky);
+	/*if (distance_to_terrain < 0.0)*/ clouds_scattering = clouds_aerial_perspective(clouds_scattering, clouds_transmittance, distance_to_terrain, air_viewer_pos, ray_origin, ray_dir, clear_sky);
 
 	// Fade away at the horizon
 	float horizon_fade = mix(dampen(linear_step(0.0, 0.08, ray_dir.y)), 1.0, smoothstep(sqr(clouds_cumulus_congestus_radius), sqr(clouds_cumulus_congestus_radius + 0.1 * clouds_cumulus_congestus_thickness), length_squared(air_viewer_pos)));

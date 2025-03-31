@@ -39,7 +39,8 @@ float clouds_noctilucent_density(vec2 coord, vec3 ray_dir) {
 vec4 draw_noctilucent_clouds(
 	vec3 air_viewer_pos,
 	vec3 ray_dir,
-	vec3 clear_sky
+	vec3 clear_sky,
+	float distance_to_terrain
 ) {
 	const vec3 color             = 0.35 * vec3(1.5, 2.0, 9.0);
 	const float phase_g          = 0.8;
@@ -76,7 +77,7 @@ vec4 draw_noctilucent_clouds(
 
 	float phase = henyey_greenstein_phase(dot(ray_dir, sun_dir), phase_g);
 	vec3 scattering = visibility * color * density * phase;
-	     scattering = clouds_aerial_perspective(scattering, transmittance, air_viewer_pos, sphere_pos, ray_dir, clear_sky);
+	     scattering = clouds_aerial_perspective(scattering, transmittance, distance_to_terrain, air_viewer_pos, sphere_pos, ray_dir, clear_sky);
 
 	return vec4(scattering, transmittance);
 }

@@ -229,7 +229,7 @@ CloudsResult draw_clouds(
 		if (result.transmittance < 1e-3) return result;
 	}
 #ifdef CLOUDS_NOCTILUCENT
-	vec4 result_nlc = draw_noctilucent_clouds(air_viewer_pos, ray_dir, clear_sky);
+	vec4 result_nlc = draw_noctilucent_clouds(air_viewer_pos, ray_dir, clear_sky, distance_to_terrain);
 	result.scattering.rgb += result_nlc.xyz * result.transmittance;
 	result.transmittance *= result_nlc.w;
 #endif // CLOUDS_NOCTILUCENT

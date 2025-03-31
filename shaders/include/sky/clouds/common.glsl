@@ -10,6 +10,16 @@
 #include "/include/utility/random.glsl"
 #include "/include/utility/sampling.glsl"
 
+//#define TERRAIN_SHADOWS_ON_CLOUDS
+
+#ifdef TERRAIN_SHADOWS_ON_CLOUDS
+#include "/include/lighting/shadows.glsl"
+#endif
+
+#if defined COLORED_LIGHTS && defined COLORED_LIGHTS_CLOUDS
+#include "/include/lighting/lpv/blocklight.glsl"
+#endif
+
 uniform float day_factor;
 
 // ----
@@ -81,12 +91,15 @@ float clouds_powder_effect(float density, float cos_theta) {
 vec3 clouds_aerial_perspective(
 	vec3 clouds_scattering,
 	float clouds_transmittance,
+	float distance_to_terrain,
 	vec3 ray_origin,
 	vec3 ray_end,
 	vec3 ray_dir,
 	vec3 clear_sky
 ) {
 	vec3 air_transmittance;
+
+	//if (distance_to_terrain >= 0.0) return clouds_scattering; //ray_end = ray_origin + distance_to_terrain;
 
 #if CLOUDS_AERIAL_PERSPECTIVE_BOOST != 0
 	ray_end = mix(ray_origin, ray_end, float(1 << CLOUDS_AERIAL_PERSPECTIVE_BOOST));
@@ -108,7 +121,7 @@ vec3 clouds_aerial_perspective(
 	clear_sky = mix(clear_sky, sky_color * rcp(tau), rainStrength * mix(1.0, 0.9, time_sunrise + time_sunset));
 	air_transmittance = mix(air_transmittance, vec3(air_transmittance.x), 0.8 * rainStrength);
 
-	return mix((1.0 - clouds_transmittance) * clear_sky, clouds_scattering, air_transmittance);
+	return mix((1.0 - clouds_transmittance) * clear_sky, clouds_scattering, /*(distance_to_terrain < 0.0) ?*/ air_transmittance /*: vec3(1.0)*/);
 }
 
 CloudsResult blend_layers(CloudsResult old, CloudsResult new, uint iter) {

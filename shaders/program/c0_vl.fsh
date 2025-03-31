@@ -104,6 +104,11 @@ uniform float time_noon;
 uniform float time_sunset;
 uniform float time_midnight;
 
+#ifdef COLORED_LIGHTS
+uniform sampler3D light_sampler_a;
+uniform sampler3D light_sampler_b;
+#endif
+
 // ------------
 //   Includes
 // ------------
@@ -189,7 +194,7 @@ void main() {
 			break;
 
 		case 1:
-			mat2x3 water_fog = raymarch_water_fog(world_start_pos, world_end_pos, depth0 == 1.0, dither);
+			mat2x3 water_fog = raymarch_water_fog(world_start_pos, world_end_pos, depth0 == 1.0, false, dither);
 
 			fog_scattering    = water_fog[0];
 			fog_transmittance = water_fog[1];

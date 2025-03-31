@@ -6,12 +6,15 @@
 #include "/include/utility/fast_math.glsl"
 #include "/include/utility/phase_functions.glsl"
 
-const float max_ray_length = 50.0;
+#if defined COLORED_LIGHTS && defined COLORED_LIGHTS_FOG
+#include "/include/lighting/lpv/blocklight.glsl"
+#endif
 
 mat2x3 raymarch_water_fog(
 	vec3 world_start_pos,
 	vec3 world_end_pos,
 	bool sky,
+	bool in_water,
 	float dither
 ) {
 	const uint min_step_count = WATER_FOG_MIN_STEPS; // 16
@@ -21,16 +24,25 @@ mat2x3 raymarch_water_fog(
 	const vec2 caustics_dir_0 = vec2(cos(0.5), sin(0.5));
 	const vec2 caustics_dir_1 = vec2(cos(3.0), sin(3.0));
 
-	const vec3 absorption_coeff = vec3(WATER_ABSORPTION_R_UNDERWATER, WATER_ABSORPTION_G_UNDERWATER, WATER_ABSORPTION_B_UNDERWATER) * rec709_to_working_color;
-	const vec3 scattering_coeff = vec3(WATER_SCATTERING_UNDERWATER);
-	const vec3 extinction_coeff = absorption_coeff + scattering_coeff;
+	const vec3 absorption_coeff_below = vec3(WATER_ABSORPTION_R_UNDERWATER, WATER_ABSORPTION_G_UNDERWATER, WATER_ABSORPTION_B_UNDERWATER) * rec709_to_working_color;
+	const vec3 scattering_coeff_below = vec3(WATER_SCATTERING_UNDERWATER);
+	const vec3 extinction_coeff_below = absorption_coeff_below + scattering_coeff_below;
+
+	const vec3 absorption_coeff_above = vec3(WATER_ABSORPTION_R, WATER_ABSORPTION_G, WATER_ABSORPTION_B) * rec709_to_working_color;
+	const vec3 scattering_coeff_above = vec3(WATER_SCATTERING);
+	const vec3 extinction_coeff_above = absorption_coeff_above + scattering_coeff_above;
 
 	const uint multiple_scattering_iterations = FOG_MULTIPLE_SCATTERING_ITERATIONS; // 4
+
+	vec3 absorption_coeff = in_water ? absorption_coeff_below : absorption_coeff_above;
+	vec3 scattering_coeff = in_water ? scattering_coeff_below : scattering_coeff_above;
+	vec3 extinction_coeff = in_water ? extinction_coeff_below : extinction_coeff_above;
 
 	vec3 world_dir = world_end_pos - world_start_pos;
 	float ray_length;
 	length_normalize(world_dir, world_dir, ray_length);
-	if (sky || ray_length > max_ray_length) ray_length = max_ray_length;
+	if (sky) ray_length = far;
+	else if (!in_water) ray_length = max(ray_length, 1.0);
 
 	// Adjust step count based on ray length
 	uint step_count = uint(float(min_step_count) + step_count_growth * ray_length);
@@ -61,9 +73,12 @@ mat2x3 raymarch_water_fog(
 	float LoV = dot(world_dir, light_dir);
 
 	vec3 step_transmittance = exp(-extinction_coeff * step_length);
+	vec3 lpv_step_transmittance = exp(-extinction_coeff_below * step_length);
 
 	vec3 scattering = vec3(0.0);
+	vec3 lpv_scattering = vec3(0.0);
 	vec3 transmittance = vec3(1.0);
+	vec3 lpv_transmittance = vec3(1.0);
 
 	for (int i = 0; i < step_count; ++i, world_pos += world_step, shadow_pos += shadow_step, caustics_pos += caustics_step) {
 		vec3 shadow_screen_pos = distort_shadow_space(shadow_pos) * 0.5 + 0.5;
@@ -78,7 +93,6 @@ mat2x3 raymarch_water_fog(
 		shadow *= get_cloud_shadows(colortex8, world_pos - cameraPosition);
 	#endif
 
-
 		// Calculate sunlight transmittance through the volume
 		float distance_traveled = abs(depth0 - shadow_screen_pos.z) * -shadowProjectionInverse[2].z * rcp(SHADOW_DEPTH_SCALE);
 
@@ -86,7 +100,6 @@ mat2x3 raymarch_water_fog(
 		float distance_traveled_sky = distance_traveled * light_dir.y;
 		      distance_traveled_sky = min(distance_traveled_sky, 15.0 - 15.0 * eye_skylight + max0(eyeAltitude - world_pos.y));
 #else
-
 	#if defined CLOUD_SHADOWS && defined FOG_CLOUD_SHADOWS && defined WORLD_OVERWORLD
 		float shadow = get_cloud_shadows(colortex8, world_pos - cameraPosition);
 	#else
@@ -96,8 +109,17 @@ mat2x3 raymarch_water_fog(
 		float distance_traveled_sky = 15.0 - 15.0 * eye_skylight + max0(eyeAltitude - world_pos.y);
 #endif
 
+#if defined COLORED_LIGHTS && defined COLORED_LIGHTS_FOG
+		const float lpv_scattering_mult = 2.0 * (1.0 - exp2(-float(multiple_scattering_iterations)));
+		vec3 lpv_color = get_lpv_basic(world_pos - cameraPosition) / lpv_scattering_mult;
+		lpv_color = max0(lpv_fog_curve(lpv_color) - 1.0);
+#else
+		#define lpv_color 0.0
+#endif
+
 		vec3 light_transmittance = exp(-extinction_coeff * distance_traveled) * shadow;
 		vec3 sky_transmittance   = exp(-extinction_coeff * distance_traveled_sky);
+		vec3 lpv_light_transmittance = exp(-extinction_coeff_below * rcp(lpv_color) * 4.0);
 
 		// Caustics pattern to create underwater light shafts
 		float caustics  = 0.67 * texture(noisetex, (caustics_pos + caustics_dir_0 * t) * 0.02).y;
@@ -113,7 +135,10 @@ mat2x3 raymarch_water_fog(
 			scattering += light_color * caustics * mie_phase * light_transmittance * transmittance * scattering_amount;
 
 			// Skylight
-			scattering += ambient_color * isotropic_phase * transmittance * scattering_amount * sky_transmittance;
+			scattering += ambient_color * isotropic_phase * sky_transmittance * transmittance * scattering_amount;
+
+			// Colored Lights
+			lpv_scattering += lpv_color * lpv_light_transmittance * lpv_transmittance * scattering_amount;
 
 			anisotropy *= 0.5;
 			scattering_amount *= 0.5;
@@ -122,9 +147,11 @@ mat2x3 raymarch_water_fog(
 		}
 
 		transmittance *= step_transmittance;
+		lpv_transmittance *= lpv_step_transmittance;
 	}
 
 	scattering *= (1.0 - step_transmittance) * scattering_coeff / extinction_coeff;
+	scattering += lpv_scattering * (1.0 - lpv_step_transmittance) * scattering_coeff_below / extinction_coeff_below;
 	transmittance = pow(transmittance, vec3(0.75));
 
 	return mat2x3(scattering, transmittance);
