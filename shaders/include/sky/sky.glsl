@@ -47,19 +47,10 @@ vec3 stable_star_field(vec2 coord, float star_threshold) {
 #endif
 }
 
-vec3 draw_stars(vec3 ray_dir) {
-#if defined WORLD_OVERWORLD && defined SHADOW
-	// Trick to make stars rotate with sun and moon
-	mat3 rot = (sunAngle < 0.5)
-		? mat3(shadowModelViewInverse)
-		: mat3(-shadowModelViewInverse[0].xyz, shadowModelViewInverse[1].xyz, -shadowModelViewInverse[2].xyz);
-
-	ray_dir *= rot;
-#endif
-
+vec3 draw_stars(vec3 ray_dir, float galaxy_luminance) {
 	// Adjust star threshold so that brightest stars appear first
 #if defined WORLD_OVERWORLD
-	float star_threshold = 1.0 - 0.008 * STARS_COVERAGE * smoothstep(-0.2, 0.05, -sun_dir.y);
+	float star_threshold = 1.0 - 0.008 * STARS_COVERAGE * smoothstep(-0.2, 0.05, -sun_dir.y) - 0.5 * cube(galaxy_luminance);
 #else
 	float star_threshold = 1.0 - 0.008 * STARS_COVERAGE;
 #endif
@@ -74,9 +65,9 @@ vec3 draw_stars(vec3 ray_dir) {
 //----------------------------------------------------------------------------//
 #if   defined WORLD_OVERWORLD
 
-#include "/include/light/colors/light_color.glsl"
-#include "/include/light/colors/weather_color.glsl"
-#include "/include/light/bsdf.glsl"
+#include "/include/lighting/colors/light_color.glsl"
+#include "/include/lighting/colors/weather_color.glsl"
+#include "/include/lighting/bsdf.glsl"
 #include "/include/sky/atmosphere.glsl"
 #include "/include/sky/projection.glsl"
 #include "/include/utility/geometry.glsl"
@@ -95,6 +86,36 @@ vec3 draw_sun(vec3 ray_dir) {
 	return sun_luminance * sun_color * step(0.0, center_to_edge) * limb_darkening;
 }
 
+#ifdef GALAXY
+vec3 draw_galaxy(vec3 ray_dir, out float galaxy_luminance) {
+	const vec3 galaxy_tint = vec3(0.75, 0.66, 1.0) * GALAXY_INTENSITY;
+
+	float galaxy_intensity = 0.05 + 1.0 * linear_step(-0.1, 0.25, -sun_dir.y);
+
+	float lon = atan(ray_dir.x, ray_dir.z);
+	float lat = fast_acos(-ray_dir.y);
+
+	vec3 galaxy = texture(
+		galaxy_sampler,
+		vec2(lon * rcp(tau) + 0.5, lat * rcp(pi))
+	).rgb;
+
+	galaxy = srgb_eotf_inv(galaxy) * rec709_to_working_color;
+
+	galaxy *= galaxy_intensity * galaxy_tint;
+
+	galaxy_luminance = dot(galaxy, luminance_weights_rec709);
+
+	galaxy = mix(
+		vec3(galaxy_luminance),
+		galaxy,
+		2.0
+	);
+
+	return max0(galaxy);
+}
+
+#endif
 vec4 get_clouds_and_aurora(vec3 ray_dir, vec3 clear_sky) {
 #if   defined PROGRAM_DEFERRED0
 	ivec2 texel   = ivec2(gl_FragCoord.xy);
@@ -125,36 +146,38 @@ vec4 get_clouds_and_aurora(vec3 ray_dir, vec3 clear_sky) {
 vec3 draw_sky(vec3 ray_dir, vec3 atmosphere) {
 	vec3 sky = vec3(0.0);
 
+#if defined SHADOW
+	// Trick to make stars rotate with sun and moon
+	mat3 rot = (sunAngle < 0.5)
+		? mat3(shadowModelViewInverse)
+		: mat3(-shadowModelViewInverse[0].xyz, shadowModelViewInverse[1].xyz, -shadowModelViewInverse[2].xyz);
+
+	vec3 celestial_dir = ray_dir * rot;
+#endif
+
+	// Galaxy
+
+#ifdef GALAXY
+	float galaxy_luminance;
+	sky += draw_galaxy(celestial_dir, galaxy_luminance);
+#else
+	const float galaxy_luminance = 0.0;
+#endif
+
 	// Sun, moon and stars
 
 #if defined PROGRAM_DEFERRED4
-	vec4 vanilla_sky = texelFetch(colortex3, ivec2(gl_FragCoord.xy), 0);
-	vec3 vanilla_sky_color = from_srgb(vanilla_sky.rgb);
-	uint vanilla_sky_id = uint(255.0 * vanilla_sky.a);
+	// Output of skytextured
+	sky += texelFetch(colortex0, ivec2(gl_FragCoord.xy), 0).rgb;
 
 #ifdef STARS
-	sky += draw_stars(ray_dir);
+	// Stars
+	sky += draw_stars(celestial_dir, galaxy_luminance);
 #endif
 
-#ifdef VANILLA_SUN
-	if (vanilla_sky_id == 2) {
-		const vec3 brightness_scale = sunlight_color * sun_luminance;
-		sky += vanilla_sky_color * brightness_scale * sun_color;
-	}
-#else
+#ifndef VANILLA_SUN
+	// Sun
 	sky += draw_sun(ray_dir);
-#endif
-
-	if (vanilla_sky_id == 3) {
-		const vec3 brightness_scale = sunlight_color * moon_luminance;
-		sky *= 0.0; // Hide stars behind moon
-		sky += vanilla_sky_color * brightness_scale;
-	}
-
-#ifdef CUSTOM_SKY
-	if (vanilla_sky_id == 4) {
-		sky += vanilla_sky_color * CUSTOM_SKY_BRIGHTNESS;
-	}
 #endif
 #endif
 
@@ -182,7 +205,7 @@ vec3 draw_sky(vec3 ray_dir, vec3 atmosphere) {
 }
 
 vec3 draw_sky(vec3 ray_dir) {
-	vec3 atmosphere = atmosphere_scattering(ray_dir, sun_color, sun_dir, moon_color, moon_dir);
+	vec3 atmosphere = atmosphere_scattering(ray_dir, sun_color, sun_dir, moon_color, moon_dir, true);
 	return draw_sky(ray_dir, atmosphere);
 }
 
@@ -248,7 +271,7 @@ vec3 draw_sky(vec3 ray_dir) {
 	// Stars
 
 	vec3 stars_fade = exp2(-0.1 * max0(1.0 - ray_dir.y) / max(ambient_color, eps)) * linear_step(-0.2, 0.0, ray_dir.y);
-	sky += draw_stars(ray_dir).xzy * stars_fade;
+	sky += draw_stars(ray_dir, 0.0).xzy * stars_fade;
 #endif
 
 	return sky;
