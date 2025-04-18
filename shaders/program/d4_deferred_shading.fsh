@@ -174,6 +174,9 @@ const bool colortex11MipmapEnabled = true;
 #include "/include/utility/encoding.glsl"
 #include "/include/utility/space_conversion.glsl"
 
+// kidofcubes -- raindrops
+#include "/include/misc/raindrop.glsl"
+
 #if defined WORLD_OVERWORLD && defined BLOCKY_CLOUDS
 #include "/include/sky/blocky_clouds.glsl"
 #endif
@@ -182,7 +185,9 @@ const bool colortex11MipmapEnabled = true;
 #include "/include/lighting/cloud_shadows.glsl"
 #endif
 
-vec4 read_clouds_and_aurora(out float apparent_distance) {
+// kidofcubes -- raindrops
+// changed to take in uv
+vec4 read_clouds_and_aurora(out float apparent_distance, in vec2 uv) {
 #if defined WORLD_OVERWORLD
 	// Soften clouds for new pixels
 	float pixel_age = texelFetch(colortex12, ivec2(gl_FragCoord.xy), 0).y;
@@ -195,13 +200,18 @@ vec4 read_clouds_and_aurora(out float apparent_distance) {
 	return vec4(0.0, 0.0, 0.0, 1.0);
 #endif
 }
+// end kidofcubes -- raindrops
 
 void main() {
 #if !defined IS_IRIS
 	colortex3_clear = vec4(0.0);
 #endif
 
-	ivec2 texel = ivec2(gl_FragCoord.xy);
+    // kidofcubes -- raindrops
+    vec2 uv = raindropRefraction(uv);
+
+	ivec2 texel = ivec2(uv*view_res);
+    // end kidofcubes -- raindrops
 
 	// Sample textures
 
@@ -215,7 +225,7 @@ void main() {
 #endif
 
 	float clouds_distance;
-	vec4 clouds_and_aurora = read_clouds_and_aurora(clouds_distance);
+	vec4 clouds_and_aurora = read_clouds_and_aurora(clouds_distance,uv);
 
     // Check for Distant Horizons terrain
 

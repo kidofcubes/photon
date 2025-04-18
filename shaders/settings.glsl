@@ -511,6 +511,15 @@ const float wetnessHalflife         = 70.0;
 
   #define NOISE_ON_DH_TERRAIN // High-frequency noise on Distant Horizons terrain
 
+  // kidofcubes -- raindrops
+//#define RAINDROP_ON_SCREEN
+//#define RAINDROPS_IN_COLD
+  #define STATIC_DROP 0.05 //[0.0 0.05 0.10 0.15 0.20 0.25 0.30 0.35 0.40 0.45 0.50 0.55 0.60 0.65 0.70 0.75 0.80 0.85 0.90 0.95 1.00]
+  #define DROP_LAYER_1 0.40 //[0.0 0.05 0.10 0.15 0.20 0.25 0.30 0.35 0.40 0.45 0.50 0.55 0.60 0.65 0.70 0.75 0.80 0.85 0.90 0.95 1.00]
+  #define DROP_LAYER_2 0.20 //[0.0 0.05 0.10 0.15 0.20 0.25 0.30 0.35 0.40 0.45 0.50 0.55 0.60 0.65 0.70 0.75 0.80 0.85 0.90 0.95 1.00]
+  #define DROP_SPEED 0.3 //[0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2.0]
+  // end kidofcubes -- raindrops
+
   // Daily Weather System
   #define WEATHER_DAY -1 // [-1 0 1 2 3 4 5 6 7 8 9 10 11]
 
