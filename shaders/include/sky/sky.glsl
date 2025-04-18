@@ -36,7 +36,7 @@ vec3 stable_star_field(vec2 coord, float star_threshold) {
 
 	f.x = cubic_smooth(f.x);
 	f.y = cubic_smooth(f.y);
-
+// kidofcubes -- sharpstars
 #ifdef STARS_SHARP
 	return unstable_star_field(i + vec2(0.0, 0.0), star_threshold);
 #else

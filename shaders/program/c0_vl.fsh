@@ -122,8 +122,7 @@ uniform float time_midnight;
 
 void main() {
 	ivec2 fog_texel  = ivec2(gl_FragCoord.xy);
-	// ivec2 view_texel = ivec2(gl_FragCoord.xy * taau_render_scale * rcp(VL_RENDER_SCALE));
-	ivec2 view_texel = ivec2(gl_FragCoord.xy * taau_render_scale * 2);
+	ivec2 view_texel = ivec2(gl_FragCoord.xy * taau_render_scale * rcp(VL_RENDER_SCALE));
 
 	float depth0        = texelFetch(depthtex0, view_texel, 0).x;
 	float depth1        = texelFetch(depthtex1, view_texel, 0).x;

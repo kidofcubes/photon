@@ -208,9 +208,13 @@ void main() {
 #endif
 
     // kidofcubes -- raindrops
+#ifdef RAINDROP_ON_SCREEN
     vec2 uv = raindropRefraction(uv);
 
-	ivec2 texel = ivec2(uv*view_res);
+    ivec2 texel = ivec2(uv*view_res);
+#else
+    ivec2 texel = ivec2(gl_FragCoord.xy);
+#endif
     // end kidofcubes -- raindrops
 
 	// Sample textures
@@ -225,6 +229,8 @@ void main() {
 #endif
 
 	float clouds_distance;
+
+    // kidofcubes -- raindrops
 	vec4 clouds_and_aurora = read_clouds_and_aurora(clouds_distance,uv);
 
     // Check for Distant Horizons terrain

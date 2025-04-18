@@ -5,9 +5,6 @@ This raindrop code was taken from https://www.shadertoy.com/view/ltffzl
 Then taken again by kidofcubes
 */
 
-#ifdef RAINDROP_ON_SCREEN
-#endif
-
 #if (!defined RAINDROP_ON_SCREEN || ! defined WORLD_OVERWORLD)
 vec2 raindropRefraction(vec2 coord) {
 	return coord;
