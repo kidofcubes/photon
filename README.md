@@ -1,6 +1,6 @@
 <br><br>
 
-fork of [photon](https://github.com/sixthsurge/photon)
+# fork of [photon](https://github.com/sixthsurge/photon)
 
 <p align = "center">A gameplay-focused shader pack for Minecraft</p>
 
@@ -16,6 +16,8 @@ fork of [photon](https://github.com/sixthsurge/photon)
 * [NakiriRuri](https://github.com/NakiriRuri) and [OrzMiku](https://github.com/Orzmiku) - Chinese settings translation 
 * [NASA Scientific Visualization Studio](https://svs.gsfc.nasa.gov/4851) - Galaxy image
 
+### fork acknowledgments
+* [LexBoosT](https://lextermina7.wixsite.com) for a lot of features/things/code from AstraLex
 
 ## installation
 
@@ -25,9 +27,6 @@ fork of [photon](https://github.com/sixthsurge/photon)
 * Photon can be used with [Iris](https://irisshaders.dev/download) (recommended) or [OptiFine](https://optifine.net/home)
 * Iris is a modern shader loader with far better performance, mod compatibility and developer features than OptiFine. Some features (Colored Lighting) will only work on Iris
 * Once you have your preferred shader loader installed, simply place the downloaded zip file in your `.minecraft/shaderpacks` folder
-
-### fork acknowledgments
-* [LexBoosT](https://lextermina7.wixsite.com/astralex) for a lot of features/things from AstraLex
 
 ## features
 * Fully revamped sky, lighting and water with a cohesive visual style
