@@ -31,6 +31,9 @@ screen.tonemap_settings                = 色调映射设置
 
 screen.dof_settings                    = 景深设置
 
+screen.lens_flare                      = 镜头光晕设置
+screen.lens_flare_color                = 光晕颜色
+
 screen.tonemap_general_settings        = 通用色调映射设置
 screen.aces_settings                   = Academy 色调映射设置
 screen.aces_pfe_settings               = Print Film Emulation LMT 设置
@@ -916,6 +919,25 @@ option.WATER_SCATTERING_UNDERWATER     = 水体散射 - 水下
 suffix.WATER_WAVE_ANGLE                = °
 
 # Post-processing settings
+
+option.LENS_FLARE                      = 镜头光晕
+option.LENS_FLARE_MODE                 = 镜头光晕模式
+option.LF_COLOR_R                      = 镜头光晕 - 红色
+option.LF_COLOR_G                      = 镜头光晕 - 绿色
+option.LF_COLOR_B                      = 镜头光晕 - 蓝色
+value.LENS_FLARE_MODE.1                = 仅太阳
+value.LENS_FLARE_MODE.2                = 日月
+option.LENS_FLARE_INTENSITY            = 镜头光晕强度
+option.LF_CLOUD_VISIBILITY             = 云层遮挡下的光晕强度
+option.LF_CLOUD_VISIBILITY.comment     = 调节太阳/月亮被云层遮挡时光晕的强度
+option.LF_BIG_RAINBOW                  = 大型彩虹光晕
+option.LF_RAINBOW                      = 中型彩虹光晕
+option.LF_CENTER_STRIP                 = 中心变形镜头光晕
+option.LF_CENTER_STRIP.comment         = 太阳/月亮中心的长条形光晕
+option.LF_EDGE_STRIP                   = 屏幕边缘蓝色变形镜头光晕
+option.LF_EDGE_STRIP.comment           = 位于屏幕边缘的2个蓝色长条形光晕
+option.LF_GLOWDOTS                     = 荧光点
+option.LF_GLOWDOTS.comment             = 尖锐的模糊荧光点
 
 option.BLOOM                           = 泛光
 option.BLOOM.comment                   = 明亮区域和光源周围的柔和泛光效果

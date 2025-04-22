@@ -36,6 +36,7 @@ uniform sampler2D shadowtex0;
 #include "/include/utility/color.glsl"
 #include "/include/utility/dithering.glsl"
 #include "/include/utility/text_rendering.glsl"
+#include "/include/misc/lensFlare.glsl"
 
 #ifdef DISTANCE_VIEW
 uniform sampler2D depthtex0;
@@ -198,6 +199,10 @@ void main() {
 	if (uv.x < 0.0) {
 		fragment_color = texture(shadowtex0, uv).rgb;
 	}
+#endif
+
+#ifdef LENS_FLARE
+LensFlare(fragment_color);
 #endif
 }
 
