@@ -34,7 +34,7 @@ screen.tonemap_settings                = §a🎞§r Tonemap Settings
 
 screen.dof_settings                    = DoF Settings
 
-screen.lens_flare                      = Lens Flare Settings
+screen.lens_flare_settings             = Lens Flare Settings
 screen.lens_flare_color                = Flare Color
 
 screen.tonemap_general_settings        = General Tonemap Settings

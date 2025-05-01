@@ -36,7 +36,7 @@ uniform sampler2D shadowtex0;
 #include "/include/utility/color.glsl"
 #include "/include/utility/dithering.glsl"
 #include "/include/utility/text_rendering.glsl"
-#include "/include/misc/lensFlare.glsl"
+#include "/include/misc/lens_flare.glsl"
 
 #ifdef DISTANCE_VIEW
 uniform sampler2D depthtex0;

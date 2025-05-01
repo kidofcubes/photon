@@ -8,14 +8,14 @@ uniform vec3 sunPosition;
 uniform mat4 gbufferProjection;
 uniform float blindness;
 uniform float viewWidth;
-uniform float rainFactor;
+uniform float rainStrength;
 uniform float aspectRatio;
 uniform float isEyeInWater;
 uniform sampler2D depthtex0;
 uniform sampler2D colortex11;
 
 flat in vec3 upVec, sunVec;
-in float SdotU;
+float SdotU = dot(sunVec, upVec);
 
 float GetLuminance(vec3 color) {
     return dot(color, vec3(0.2126, 0.7152, 0.0722));
@@ -73,8 +73,7 @@ float edgeMaskx = 1.0 - clamp(distance(lightPos.x, 0.5f)*9.0f - 4.5f, 0.0f, 1.0f
 float edgeMasky = 1.0 - clamp(distance(lightPos.y, 0.5f)*9.0f - 4.5f, 0.0f, 1.0f);
 float edgeMask = edgeMaskx * edgeMasky;
 
-float sunmask = depthVisibility * clamp(cloudVisibility, LF_CLOUD_VISIBILITY, 1.0) * edgeMask * float(isEyeInWater <= 0.1 && blindness == 0.0);
-      sunmask *= 1.0 - rainFactor;
+float sunmask = depthVisibility * clamp(cloudVisibility, LF_CLOUD_VISIBILITY, 1.0) * edgeMask * float(isEyeInWater <= 0.1 && blindness == 0.0) * (1.0 - rainStrength);
 
 if (sunmask > 0.02)
 {

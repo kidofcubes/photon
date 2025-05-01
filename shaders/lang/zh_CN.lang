@@ -31,7 +31,7 @@ screen.tonemap_settings                = 色调映射设置
 
 screen.dof_settings                    = 景深设置
 
-screen.lens_flare                      = 镜头光晕设置
+screen.lens_flare_settings             = 镜头光晕设置
 screen.lens_flare_color                = 光晕颜色
 
 screen.tonemap_general_settings        = 通用色调映射设置
