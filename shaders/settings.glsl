@@ -827,6 +827,7 @@ const float wetnessHalflife         = 70.0;
   #define LF_BIG_RAINBOW
   #define LF_RAINBOW
   #define LF_CENTER_STRIP
+  #define LF_XCROSS_STRIP
   #define LF_EDGE_STRIP
   #define LF_GLOWDOTS
 

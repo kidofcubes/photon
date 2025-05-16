@@ -1044,6 +1044,7 @@ option.LF_BIG_RAINBOW                  = Big Rainbow Flare
 option.LF_RAINBOW                      = Medium Rainbow Flare
 option.LF_CENTER_STRIP                 = Center Anamorphic Lens Flare
 option.LF_CENTER_STRIP.comment         = Strip-shaped lens flare at the center of the sun/moon
+option.LF_XCROSS_STRIP                 = Center X cross Lens Flare
 option.LF_EDGE_STRIP                   = Edge Blue Anamorphic Lens Flare
 option.LF_EDGE_STRIP.comment           = 2 Blue strip-shaped lens flares at the edge of the screen
 option.LF_GLOWDOTS                     = Glow Dots

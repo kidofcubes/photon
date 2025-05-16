@@ -934,6 +934,7 @@ option.LF_BIG_RAINBOW                  = 大型彩虹光晕
 option.LF_RAINBOW                      = 中型彩虹光晕
 option.LF_CENTER_STRIP                 = 中心变形镜头光晕
 option.LF_CENTER_STRIP.comment         = 太阳/月亮中心的长条形光晕
+option.LF_XCROSS_STRIP                 = 中心X形交叉光晕
 option.LF_EDGE_STRIP                   = 屏幕边缘蓝色变形镜头光晕
 option.LF_EDGE_STRIP.comment           = 位于屏幕边缘的2个蓝色长条形光晕
 option.LF_GLOWDOTS                     = 荧光点
