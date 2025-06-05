@@ -11,10 +11,17 @@
 
 #include "/include/global.glsl"
 
+uniform mat4 gbufferModelView;
+uniform vec3 sunPosition;
+
 out vec2 uv;
+flat out vec3 upVec, sunVec;
 
 void main() {
 	uv = gl_MultiTexCoord0.xy;
+
+  upVec = normalize(gbufferModelView[1].xyz);
+  sunVec = normalize(sunPosition);
 
 	gl_Position = vec4(gl_Vertex.xy * 2.0 - 1.0, 0.0, 1.0);
 }

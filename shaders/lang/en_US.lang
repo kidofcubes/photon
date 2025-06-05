@@ -34,6 +34,9 @@ screen.tonemap_settings                = §a🎞§r Tonemap Settings
 
 screen.dof_settings                    = DoF Settings
 
+screen.lens_flare_settings             = Lens Flare Settings
+screen.lens_flare_color                = Flare Color
+
 screen.tonemap_general_settings        = General Tonemap Settings
 screen.aces_settings                   = Academy Tonemap Settings
 screen.aces_pfe_settings               = Print Film Emulation LMT Settings
@@ -1026,6 +1029,26 @@ option.WATER_ABSORPTION_B_UNDERWATER   = Blue Absorption - Underwater
 option.WATER_SCATTERING_UNDERWATER     = Scattering - Underwater
 
 # Post-processing settings
+
+option.LENS_FLARE                      = Lens Flare
+option.LENS_FLARE_MODE                 = Lens Flare Mode
+option.LF_COLOR_R                      = Lens Flare Color Red
+option.LF_COLOR_G                      = Lens Flare Color Green
+option.LF_COLOR_B                      = Lens Flare Color Blue
+value.LENS_FLARE_MODE.1                = Sun Only
+value.LENS_FLARE_MODE.2                = Sun and Moon
+option.LENS_FLARE_INTENSITY            = Lens Flare Intensity
+option.LF_CLOUD_VISIBILITY             = Cloud Collision Intensity
+option.LF_CLOUD_VISIBILITY.comment     = Adjusts flare visibility when the sun/moon obscured by clouds
+option.LF_BIG_RAINBOW                  = Big Rainbow Flare
+option.LF_RAINBOW                      = Medium Rainbow Flare
+option.LF_CENTER_STRIP                 = Center Anamorphic Lens Flare
+option.LF_CENTER_STRIP.comment         = Strip-shaped lens flare at the center of the sun/moon
+option.LF_XCROSS_STRIP                 = Center X cross Lens Flare
+option.LF_EDGE_STRIP                   = Edge Blue Anamorphic Lens Flare
+option.LF_EDGE_STRIP.comment           = 2 Blue strip-shaped lens flares at the edge of the screen
+option.LF_GLOWDOTS                     = Glow Dots
+option.LF_GLOWDOTS.comment             = Pointy Fuzzy Glow Dots
 
 option.BLOOM                           = Bloom
 option.BLOOM.comment                   = Soft "glow" effect around bright areas and light sources
