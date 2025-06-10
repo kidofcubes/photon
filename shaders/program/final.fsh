@@ -201,7 +201,7 @@ void main() {
 	}
 #endif
 
-#ifdef LENS_FLARE
+#if defined LENS_FLARE && !defined WORLD_MOON
 LensFlare(fragment_color);
 #endif
 }
