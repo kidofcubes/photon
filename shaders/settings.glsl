@@ -1217,6 +1217,9 @@ const float wetnessHalflife         = 70.0;
   #ifdef FXAA
   #endif
 
+  #ifdef LENS_FLARE
+  #endif
+
   // Not available on OF
   #ifndef IS_IRIS
     #undef USE_SEPARATE_ENTITY_DRAWS
