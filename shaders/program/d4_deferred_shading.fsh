@@ -13,7 +13,7 @@
 
 layout (location = 0) out vec3 scene_color;
 
-#ifdef IS_IRIS
+#ifdef USE_SEPARATE_ENTITY_DRAWS
 /* RENDERTARGETS: 0 */
 #else
 layout (location = 1) out vec4 colortex3_clear;
@@ -30,10 +30,12 @@ flat in vec3 light_color;
 flat in vec3 sun_color;
 flat in vec3 moon_color;
 
+#include "/include/fog/overworld/parameters.glsl"
+flat in OverworldFogParameters fog_params;
+
 #if defined SH_SKYLIGHT
 flat in vec3 sky_sh[9];
-#else
-flat in mat3 sky_samples;
+flat in vec3 skylight_up;
 #endif
 #endif
 
@@ -48,18 +50,17 @@ uniform sampler2D colortex1; // gbuffer 0
 uniform sampler2D colortex2; // gbuffer 1
 uniform sampler2D colortex4; // sky map
 uniform sampler2D colortex5; // previous frame color
-uniform sampler2D colortex6; // ambient occlusion
+uniform sampler2D colortex6; // ambient lighting data
 uniform sampler2D colortex7; // previous frame fog scattering
-uniform sampler2D colortex11; // clouds history
-uniform sampler2D colortex12; // clouds apparent distance
+uniform sampler2D colortex14; // ambient lighting history data
 
-#ifndef IS_IRIS
+#ifndef USE_SEPARATE_ENTITY_DRAWS
 uniform sampler2D colortex3; // OF damage overlay, armor glint
 #endif
 
 #if defined WORLD_OVERWORLD && defined GALAXY
-uniform sampler2D colortex14;
-#define galaxy_sampler colortex14
+uniform sampler2D colortex13;
+#define galaxy_sampler colortex13
 #endif
 
 #ifdef CLOUD_SHADOWS
@@ -148,7 +149,6 @@ uniform float viewWidth, viewHeight, aspectRatio;
 
 /*
 const bool colortex5MipmapEnabled = true;
-const bool colortex11MipmapEnabled = true;
 */
 
 // ------------
@@ -160,13 +160,13 @@ const bool colortex11MipmapEnabled = true;
 
 #include "/include/fog/simple_fog.glsl"
 #include "/include/lighting/diffuse_lighting.glsl"
-#include "/include/lighting/shadows.glsl"
+#include "/include/lighting/shadows/sampling.glsl"
 #include "/include/lighting/specular_lighting.glsl"
 #include "/include/misc/distant_horizons.glsl"
-#include "/include/misc/edge_highlight.glsl"
-#include "/include/misc/material.glsl"
+#include "/include/surface/edge_highlight.glsl"
+#include "/include/surface/material.glsl"
 #include "/include/misc/purkinje_shift.glsl"
-#include "/include/misc/rain_puddles.glsl"
+#include "/include/surface/rain_puddles.glsl"
 #include "/include/misc/fullBorder.glsl"
 #include "/include/sky/sky.glsl"
 #include "/include/utility/bicubic.glsl"
@@ -185,25 +185,8 @@ const bool colortex11MipmapEnabled = true;
 #include "/include/lighting/cloud_shadows.glsl"
 #endif
 
-// kidofcubes -- raindrops
-// changed to take in uv
-vec4 read_clouds_and_aurora(out float apparent_distance, in vec2 uv) {
-#if defined WORLD_OVERWORLD
-	// Soften clouds for new pixels
-	float pixel_age = texelFetch(colortex12, ivec2(gl_FragCoord.xy), 0).y;
-	float ld = 2.0 * dampen(max0(1.0 - 0.1 * pixel_age));
-
-	apparent_distance = min_of(textureGather(colortex12, uv * taau_render_scale, 0));
-
-	return textureLod(colortex11, uv * taau_render_scale, ld);
-#else
-	return vec4(0.0, 0.0, 0.0, 1.0);
-#endif
-}
-// end kidofcubes -- raindrops
-
 void main() {
-#if !defined IS_IRIS
+#if !defined USE_SEPARATE_ENTITY_DRAWS
 	colortex3_clear = vec4(0.0);
 #endif
 
@@ -224,14 +207,9 @@ void main() {
 #if defined NORMAL_MAPPING || defined SPECULAR_MAPPING
 	vec4 gbuffer_data_1 = texelFetch(colortex2, texel, 0);
 #endif
-#if !defined IS_IRIS
+#if !defined USE_SEPARATE_ENTITY_DRAWS
 	vec4 overlays       = texelFetch(colortex3, texel, 0);
 #endif
-
-	float clouds_distance;
-
-    // kidofcubes -- raindrops
-	vec4 clouds_and_aurora = read_clouds_and_aurora(clouds_distance,uv);
 
     // Check for Distant Horizons terrain
 
@@ -246,6 +224,9 @@ void main() {
 	// Space conversions
 
 	depth += 0.38 * float(depth < hand_depth); // Hand lighting fix from Capt Tatsu
+	if (depth < hand_depth) {
+		return;
+	}
 
 	vec3 view_pos = screen_to_view_space(combined_projection_matrix_inverse, vec3(uv, depth), true);
 	vec3 scene_pos = view_to_scene_space(view_pos);
@@ -259,7 +240,8 @@ void main() {
 		sun_dir, 
 		moon_color, 
 		moon_dir, 
-		/* use_klein_nishina_phase */ depth == 1.0
+		/* use_klein_nishina_phase */ depth == 1.0 
+			&& !(sunAngle > 0.5 && any(equal(ivec3(moonPhase), ivec3(3, 4, 5)))) 
 	);
 
 #ifdef BLOCKY_CLOUDS
@@ -303,9 +285,6 @@ void main() {
 		scene_color = draw_sky(world_dir);
 #endif
 
-		// Apply clouds and aurora
-		scene_color = scene_color * clouds_and_aurora.w + clouds_and_aurora.xyz;
-
 		// Apply blocky clouds 
 #if defined WORLD_OVERWORLD && defined BLOCKY_CLOUDS 
 		scene_color = scene_color * blocky_clouds.w + blocky_clouds.xyz;
@@ -325,10 +304,18 @@ void main() {
 		ivec2 i = ivec2(half_res_pos);
 		vec2  f = fract(half_res_pos);
 
-		vec3 half_res_00 = texelFetch(colortex6, i + ivec2(0, 0), 0).xyz;
-		vec3 half_res_10 = texelFetch(colortex6, i + ivec2(1, 0), 0).xyz;
-		vec3 half_res_01 = texelFetch(colortex6, i + ivec2(0, 1), 0).xyz;
-		vec3 half_res_11 = texelFetch(colortex6, i + ivec2(1, 1), 0).xyz;
+		ivec2 p10 = i + ivec2(1, 0);
+		ivec2 p01 = i + ivec2(0, 1);
+		ivec2 p11 = i + ivec2(1, 1);
+
+		vec4 ambient_00 = texelFetch(colortex6, i, 0);
+		vec4 ambient_10 = texelFetch(colortex6, p10, 0);
+		vec4 ambient_01 = texelFetch(colortex6, p01, 0);
+		vec4 ambient_11 = texelFetch(colortex6, p11, 0);
+		float ambient_depth_00 = texelFetch(colortex14, i, 0).x;
+		float ambient_depth_10 = texelFetch(colortex14, p10, 0).x;
+		float ambient_depth_01 = texelFetch(colortex14, p01, 0).x;
+		float ambient_depth_11 = texelFetch(colortex14, p11, 0).x;
 
 		// Unpack gbuffer data
 
@@ -344,7 +331,7 @@ void main() {
 		vec3 flat_normal   = decode_unit_vector(data[2]);
 		vec2 light_levels  = data[3];
 
-#if !defined IS_IRIS
+#if !defined USE_SEPARATE_ENTITY_DRAWS
 		uint overlay_id = uint(255.0 * overlays.a);
 		albedo = overlay_id == 0u ? albedo + overlays.rgb : albedo; // enchantment glint
 		albedo = overlay_id == 1u ? 2.0 * albedo * overlays.rgb : albedo; // damage overlay
@@ -385,7 +372,9 @@ void main() {
 				flat_normal,
 				light_levels,
 				material.porosity,
+				material_mask,
 				normal,
+				material.albedo,
 				material.f0,
 				material.roughness,
 				material.ssr_multiplier
@@ -395,22 +384,40 @@ void main() {
 
 		// Upscale ambient occlusion
 
-#ifdef GTAO
 		float lin_z = screen_to_view_space_depth(combined_projection_matrix_inverse, depth);
 
 		#define depth_weight(reversed_depth) exp2(-10.0 * abs(screen_to_view_space_depth(combined_projection_matrix_inverse, 1.0 - reversed_depth) - lin_z))
-
-		vec4 gtao = vec4(half_res_00, 1.0) * depth_weight(half_res_00.z) * (1.0 - f.x) * (1.0 - f.y)
-		          + vec4(half_res_10, 1.0) * depth_weight(half_res_10.z) * (f.x - f.x * f.y)
-		          + vec4(half_res_01, 1.0) * depth_weight(half_res_01.z) * (f.y - f.x * f.y)
-		          + vec4(half_res_11, 1.0) * depth_weight(half_res_11.z) * (f.x * f.y);
-
+		float w00 = depth_weight(ambient_depth_00) * (1.0 - f.x) * (1.0 - f.y);
+		float w10 = depth_weight(ambient_depth_10) * (f.x - f.x * f.y);
+		float w01 = depth_weight(ambient_depth_01) * (f.y - f.x * f.y);
+		float w11 = depth_weight(ambient_depth_11) * (f.x * f.y);
 		#undef depth_weight
 
-		float ao = (gtao.w == 0.0) ? half_res_00.x : gtao.x / gtao.w;
-#else
-		#define ao 1.0
-#endif
+		vec4 ambient_upscaled;
+		float weight_sum = w00 + w10 + w01 + w11;
+
+		if (weight_sum != 0.0) {
+			ambient_upscaled 
+				= ambient_00 * w00 
+				+ ambient_10 * w10 
+				+ ambient_01 * w01 
+				+ ambient_11 * w11;
+
+			ambient_upscaled *= rcp(weight_sum);
+		} else {
+			ambient_upscaled = ambient_00;
+		}
+
+		float ao = ambient_upscaled.x;
+		float ambient_sss = ambient_upscaled.y;
+
+		vec3 bent_normal;
+		bent_normal.xy = ambient_upscaled.zw * 2.0 - 1.0;
+		bent_normal.z = sqrt(clamp01(1.0 - dot(bent_normal.xy, bent_normal.xy)));
+		bent_normal = mat3(gbufferModelViewInverse) * bent_normal;
+
+		// Sense check bent normal
+		if (dot(bent_normal, normal) < eps) bent_normal = normal;
 
 		// Shadows
 
@@ -456,9 +463,11 @@ void main() {
 			scene_pos,
 			normal,
 			flat_normal,
+			bent_normal,
 			shadows,
 			light_levels,
 			ao,
+			ambient_sss,
 			sss_depth,
 #ifdef CLOUD_SHADOWS
 			cloud_shadows,
@@ -487,6 +496,7 @@ void main() {
 				tbn,
 				vec3(uv, depth),
 				view_pos,
+				world_pos,
 				normal,
 				flat_normal,
 				world_dir,
@@ -518,6 +528,7 @@ void main() {
 
 		float horizon_factor = linear_step(0.1, 1.0, exp(-75.0 * sqr(sun_dir.y + 0.0496)));
 			  horizon_factor = clamp01(horizon_factor + step(0.01, rainStrength));
+			  horizon_factor = max(horizon_factor, dampen(linear_step(0.15, 0.05, world_dir.y)));
 
 		vec3 border_fog_color = mix(atmosphere, horizon_color, sqr(horizon_factor)) * (1.0 - biome_cave);
 	#else
@@ -531,19 +542,11 @@ void main() {
 		vec4 fog = common_fog(view_distance, false);
 		scene_color = scene_color * fog.a + fog.rgb;
 
-		// Apply clouds in front of terrain
-#if defined WORLD_OVERWORLD
-	#ifndef BLOCKY_CLOUDS
-		if (clouds_distance < view_distance) {
-			scene_color = scene_color * clouds_and_aurora.w + clouds_and_aurora.xyz;
-		}
-	#else
+#if defined WORLD_OVERWORLD && defined BLOCKY_CLOUDS
 		scene_color = scene_color * blocky_clouds.w + blocky_clouds.xyz;
-	#endif
 #endif
 
 		// Apply purkinje shift
 		scene_color = purkinje_shift(scene_color, light_levels);
 	}
 }
-

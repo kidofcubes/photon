@@ -1,4 +1,4 @@
-#if !defined INCLUDE_SKY_SKY
+#if !defined INCLUDE_SKY_SKYsky
 #define INCLUDE_SKY_SKY
 
 #include "/include/utility/color.glsl"
@@ -6,74 +6,28 @@
 #include "/include/utility/fast_math.glsl"
 #include "/include/utility/random.glsl"
 
-// Stars based on https://www.shadertoy.com/view/Md2SR3
-
-vec3 unstable_star_field(vec2 coord, float star_threshold) {
-	const float min_temp = 3500.0;
-	const float max_temp = 9500.0;
-
-	vec4 noise = hash4(coord);
-
-	float star = linear_step(star_threshold, 1.0, noise.x);
-	      star = pow4(star) * STARS_INTENSITY;
-
-	float temp = mix(min_temp, max_temp, noise.y);
-	vec3 color = blackbody(temp);
-
-	const float twinkle_speed = 2.0;
-	float twinkle_amount = noise.z;
-	float twinkle_offset = tau * noise.w;
-	star *= 1.0 - twinkle_amount * cos(frameTimeCounter * twinkle_speed + twinkle_offset);
-
-	return star * color;
-}
-
-// Stabilizes the star field by sampling at the four neighboring integer coordinates and
-// interpolating
-vec3 stable_star_field(vec2 coord, float star_threshold) {
-	coord = abs(coord) + 33.3 * step(0.0, coord);
-	vec2 i, f = modf(coord, i);
-
-	f.x = cubic_smooth(f.x);
-	f.y = cubic_smooth(f.y);
-// kidofcubes -- sharpstars
-#ifdef STARS_SHARP
-	return unstable_star_field(i + vec2(0.0, 0.0), star_threshold);
-#else
-	return unstable_star_field(i + vec2(0.0, 0.0), star_threshold) * (1.0 - f.x) * (1.0 - f.y)
-	     + unstable_star_field(i + vec2(1.0, 0.0), star_threshold) * f.x * (1.0 - f.y)
-	     + unstable_star_field(i + vec2(0.0, 1.0), star_threshold) * f.y * (1.0 - f.x)
-	     + unstable_star_field(i + vec2(1.0, 1.0), star_threshold) * f.x * f.y;
-#endif
-}
-
-vec3 draw_stars(vec3 ray_dir, float galaxy_luminance) {
-	// Adjust star threshold so that brightest stars appear first
-#if defined WORLD_OVERWORLD
-	float star_threshold = 1.0 - 0.008 * STARS_COVERAGE * smoothstep(-0.2, 0.05, -sun_dir.y) - 0.5 * cube(galaxy_luminance);
-#else
-	float star_threshold = 1.0 - 0.008 * STARS_COVERAGE;
-#endif
-
-	// Project ray direction onto the plane
-	vec2 coord  = ray_dir.xy * rcp(abs(ray_dir.z) + length(ray_dir.xy)) + 41.21 * sign(ray_dir.z);
-	     coord *= 600.0;
-
-	return stable_star_field(coord, star_threshold);
-}
-
 //----------------------------------------------------------------------------//
 #if   defined WORLD_OVERWORLD
 
 #include "/include/lighting/colors/light_color.glsl"
 #include "/include/lighting/colors/weather_color.glsl"
 #include "/include/lighting/bsdf.glsl"
+#include "/include/misc/lightning_flash.glsl"
 #include "/include/sky/atmosphere.glsl"
 #include "/include/sky/projection.glsl"
+#include "/include/sky/stars.glsl"
 #include "/include/utility/geometry.glsl"
 
+#if defined PROGRAM_DEFERRED0
+#include "/include/sky/clouds.glsl"
+
+#if defined CREPUSCULAR_RAYS && !defined BLOCKY_CLOUDS
+#include "/include/sky/crepuscular_rays.glsl"
+#endif
+#endif
+
 const float sun_luminance  = 40.0; // luminance of sun disk
-const float moon_luminance = 4.0; // luminance of moon disk
+const float moon_luminance = 10.0; // luminance of moon disk
 
 vec3 draw_sun(vec3 ray_dir) {
 	float nu = dot(ray_dir, sun_dir);
@@ -127,6 +81,10 @@ vec4 get_clouds_and_aurora(vec3 ray_dir, vec3 clear_sky) {
 	#ifndef BLOCKY_CLOUDS
 	const vec3 air_viewer_pos = vec3(0.0, planet_radius, 0.0);
 	CloudsResult result = draw_clouds(air_viewer_pos, ray_dir, clear_sky, -1.0, dither);
+
+	// Lightning flash
+	result.scattering.rgb += LIGHTNING_FLASH_UNIFORM * lightning_flash_intensity * result.scattering.a;
+
 	#else
 	CloudsResult result = clouds_not_hit;
 	#endif
@@ -134,10 +92,25 @@ vec4 get_clouds_and_aurora(vec3 ray_dir, vec3 clear_sky) {
 	// Render aurora
 	vec3 aurora = draw_aurora(ray_dir, dither);
 
-	return vec4(
-		result.scattering + aurora * result.transmittance,
+	vec4 clouds_and_aurora = vec4(
+		result.scattering.xyz + aurora * result.transmittance,
 		result.transmittance
 	);
+
+	// Crepuscular rays
+
+	#if defined CREPUSCULAR_RAYS && !defined BLOCKY_CLOUDS
+	vec4 crepuscular_rays = draw_crepuscular_rays(
+		colortex8, 
+		ray_dir, 
+		false,
+		dither
+	);
+	clouds_and_aurora *= crepuscular_rays.w;
+	clouds_and_aurora.rgb += crepuscular_rays.xyz;
+	#endif
+
+	return clouds_and_aurora;
 #else
 	return vec4(0.0, 0.0, 0.0, 1.0);
 #endif
@@ -153,6 +126,8 @@ vec3 draw_sky(vec3 ray_dir, vec3 atmosphere) {
 		: mat3(-shadowModelViewInverse[0].xyz, shadowModelViewInverse[1].xyz, -shadowModelViewInverse[2].xyz);
 
 	vec3 celestial_dir = ray_dir * rot;
+#else 
+	vec3 celestial_dir = ray_dir;
 #endif
 
 	// Galaxy
@@ -168,11 +143,13 @@ vec3 draw_sky(vec3 ray_dir, vec3 atmosphere) {
 
 #if defined PROGRAM_DEFERRED4
 	// Output of skytextured
+	vec3 skytextured_output = texelFetch(colortex0, ivec2(gl_FragCoord.xy), 0).rgb;
 	sky += texelFetch(colortex0, ivec2(gl_FragCoord.xy), 0).rgb;
 
 #ifdef STARS
 	// Stars
-	sky += draw_stars(celestial_dir, galaxy_luminance);
+	float stars_visibility = clamp01(1.0 - dot(skytextured_output, vec3(0.33) * 256.0));
+	sky += draw_stars(celestial_dir, galaxy_luminance) * stars_visibility;
 #endif
 
 #ifndef VANILLA_SUN
@@ -186,26 +163,31 @@ vec3 draw_sky(vec3 ray_dir, vec3 atmosphere) {
 	sky *= atmosphere_transmittance(ray_dir.y, planet_radius) * (1.0 - rainStrength);
 	sky += atmosphere;
 
-	// Rain
-	vec3 rain_sky = get_weather_color() * (1.0 - exp2(-0.8 / clamp01(ray_dir.y)));
-	sky = mix(sky, rain_sky, rainStrength * mix(1.0, 0.9, time_sunrise + time_sunset));
-
 	// Clouds
 
 	vec4 clouds = get_clouds_and_aurora(ray_dir, sky);
 	sky *= clouds.a;   // transmittance
 	sky += clouds.rgb; // scattering
 
+#if !defined PROGRAM_DEFERRED0
 	// Fade lower part of sky into cave fog color when underground so that the sky isn't visible
 	// beyond the render distance
 	float underground_sky_fade = biome_cave * smoothstep(-0.1, 0.1, 0.4 - ray_dir.y);
 	sky = mix(sky, vec3(0.0), underground_sky_fade);
+#endif
 
 	return sky;
 }
 
 vec3 draw_sky(vec3 ray_dir) {
-	vec3 atmosphere = atmosphere_scattering(ray_dir, sun_color, sun_dir, moon_color, moon_dir, true);
+	vec3 atmosphere = atmosphere_scattering(
+		ray_dir, 
+		sun_color, 
+		sun_dir, 
+		moon_color, 
+		moon_dir,
+		true
+	);
 	return draw_sky(ray_dir, atmosphere);
 }
 
@@ -221,6 +203,7 @@ vec3 draw_sky(vec3 ray_dir) {
 
 #include "/include/misc/end_lighting_fix.glsl"
 #include "/include/sky/atmosphere.glsl"
+#include "/include/sky/stars.glsl"
 
 const float sun_solid_angle = cone_angle_to_solid_angle(sun_angular_radius);
 const vec3 end_sun_color = vec3(1.0, 0.5, 0.25);
@@ -266,7 +249,9 @@ vec3 draw_sky(vec3 ray_dir) {
 #if defined PROGRAM_DEFERRED4
 	// Sun
 
+	#ifdef END_SUN_EFFECT
 	sky += draw_sun(ray_dir);
+	#endif
 
 	// Stars
 

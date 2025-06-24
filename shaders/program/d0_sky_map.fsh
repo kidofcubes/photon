@@ -25,24 +25,34 @@ flat in vec3 sun_color;
 flat in vec3 moon_color;
 flat in vec3 sky_color;
 
-#include "/include/misc/weather_struct.glsl"
-flat in DailyWeatherVariation daily_weather_variation;
+flat in float aurora_amount;
+flat in mat2x3 aurora_colors;
+
+#include "/include/sky/clouds/parameters.glsl"
+flat in CloudsParameters clouds_params;
+
+#include "/include/fog/overworld/parameters.glsl"
+flat in OverworldFogParameters fog_params;
 #endif
 
 // ------------
 //   Uniforms
 // ------------
 
-uniform sampler3D colortex6; // 3D worley noise
-uniform sampler3D colortex7; // 3D curl noise
+uniform sampler3D colortex6; // 3D bubbly worley noise
+#define SAMPLER_WORLEY_BUBBLY colortex6
+uniform sampler3D colortex7; // 3D swirley worley noise
+#define SAMPLER_WORLEY_SWIRLEY colortex7
 
 #if defined WORLD_OVERWORLD && defined GALAXY
-uniform sampler2D colortex14;
-#define galaxy_sampler colortex14
+uniform sampler2D colortex13;
+#define galaxy_sampler colortex13
 #endif
 
 uniform sampler3D depthtex0; // atmospheric scattering LUT
 uniform sampler2D depthtex1;
+
+uniform sampler2D colortex8; // cloud shadow map
 
 uniform sampler2D noisetex;
 
@@ -72,6 +82,9 @@ uniform int isEyeInWater;
 uniform float eyeAltitude;
 uniform float rainStrength;
 uniform float blindness;
+uniform float darknessFactor;
+
+uniform int dhRenderDistance;
 
 uniform vec3 light_dir;
 uniform vec3 sun_dir;
@@ -97,10 +110,15 @@ uniform float biome_may_snow;
 // ------------
 
 #define ATMOSPHERE_SCATTERING_LUT depthtex0
+#define CLOUDS_USE_LOCAL_COVERAGE_MAP
+
+#ifdef CLOUDS_CUMULUS_PRECOMPUTE_LOCAL_COVERAGE
+	#define CLOUDS_USE_LOCAL_COVERAGE_MAP
+#endif
 
 #if defined WORLD_OVERWORLD
+#include "/include/fog/overworld/analytic.glsl"
 #include "/include/sky/aurora.glsl"
-#include "/include/sky/clouds.glsl"
 #endif
 
 #include "/include/sky/sky.glsl"
@@ -124,6 +142,18 @@ void main() {
 		vec3 ray_dir = unproject_sky(uv);
 
 		sky_map = draw_sky(ray_dir);
+
+#if defined WORLD_OVERWORLD
+		// Apply analytic fog over sky
+		mat2x3 fog = air_fog_analytic(
+			cameraPosition,
+			cameraPosition + ray_dir,
+			true,
+			eye_skylight,
+			1.0
+		);
+		sky_map = sky_map * fog[1] + fog[0];
+#endif
 	}
 }
 

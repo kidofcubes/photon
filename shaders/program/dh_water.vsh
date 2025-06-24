@@ -20,11 +20,17 @@ flat out uint is_water;
 flat out vec3 light_color;
 flat out vec3 ambient_color;
 
+#if defined WORLD_OVERWORLD 
+#include "/include/fog/overworld/parameters.glsl"
+flat out OverworldFogParameters fog_params;
+#endif
+
 // ------------
 //   Uniforms
 // ------------
 
 uniform sampler2D colortex4; // Sky map, lighting colors
+uniform sampler2D colortex9; // Sky SH
 
 uniform mat4 gbufferModelView;
 uniform mat4 gbufferModelViewInverse;
@@ -41,16 +47,46 @@ uniform float far;
 
 uniform ivec2 atlasSize;
 
+uniform int worldTime;
+uniform int worldDay;
 uniform int frameCounter;
-uniform int renderStage;
 uniform float frameTimeCounter;
+
+uniform float sunAngle;
 uniform float rainStrength;
+uniform float wetness;
 
 uniform vec2 view_res;
 uniform vec2 view_pixel_size;
 uniform vec2 taa_offset;
 
 uniform vec3 light_dir;
+uniform vec3 sun_dir;
+
+uniform float eye_skylight;
+
+uniform float biome_temperate;
+uniform float biome_arid;
+uniform float biome_snowy;
+uniform float biome_taiga;
+uniform float biome_jungle;
+uniform float biome_swamp;
+uniform float biome_may_rain;
+uniform float biome_may_snow;
+uniform float biome_temperature;
+uniform float biome_humidity;
+
+uniform float world_age;
+uniform float time_sunrise;
+uniform float time_noon;
+uniform float time_sunset;
+uniform float time_midnight;
+
+uniform float desert_sandstorm;
+
+#if defined WORLD_OVERWORLD 
+#include "/include/weather/fog.glsl"
+#endif
 
 void main() {
 	light_levels = linear_step(
@@ -60,8 +96,13 @@ void main() {
     );
 	tint          = gl_Color;
     normal        = mat3(gbufferModelViewInverse) * (mat3(gl_ModelViewMatrix) * gl_Normal);
+
 	light_color   = texelFetch(colortex4, ivec2(191, 0), 0).rgb;
+#if defined WORLD_OVERWORLD && defined SH_SKYLIGHT
+	ambient_color = texelFetch(colortex9, ivec2(9, 0), 0).rgb;
+#else
 	ambient_color = texelFetch(colortex4, ivec2(191, 1), 0).rgb;
+#endif
 
 	is_water = uint(dhMaterialId == DH_BLOCK_WATER);
 
@@ -82,6 +123,9 @@ void main() {
 	clip_pos.xy += taa_offset * clip_pos.w * 0.66;
 #endif
 
+#if defined WORLD_OVERWORLD
+    fog_params = get_fog_parameters(get_weather());
+#endif
+
     gl_Position = clip_pos;
 }
-

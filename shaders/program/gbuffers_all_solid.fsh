@@ -92,7 +92,7 @@ uniform vec4 entityColor;
 #endif
 
 #if defined PROGRAM_GBUFFERS_TERRAIN && defined POM
-#include "/include/misc/parallax.glsl"
+#include "/include/surface/parallax.glsl"
 #endif
 
 #ifdef DIRECTIONAL_LIGHTMAPS
@@ -100,6 +100,7 @@ uniform vec4 entityColor;
 #endif
 
 #include "/include/misc/material_fix.glsl"
+#include "/include/misc/material_masks.glsl"
 #include "/include/utility/dithering.glsl"
 #include "/include/utility/encoding.glsl"
 #include "/include/utility/fast_math.glsl"
@@ -221,7 +222,7 @@ void main() {
 	float view_distance = length(tangent_pos);
 
 	bool has_pom = view_distance < POM_DISTANCE; // Only calculate POM for close terrain
-	     has_pom = has_pom && material_mask != 1 && material_mask != 39; // Do not calculate POM for water or lava
+	     has_pom = has_pom && material_mask != MATERIAL_LAVA; // Do not calculate POM for water or lava
 
 	vec3 tangent_dir = -normalize(tangent_pos);
 	mat2 uv_gradient = mat2(dFdx(uv), dFdy(uv));
@@ -257,8 +258,8 @@ void main() {
 #endif
 
 #if    defined PROGRAM_GBUFFERS_ENTITIES
-	if (material_mask == 102) base_color = vec4(1.0);
-	if (base_color.a < 0.1 && material_mask != 101) { discard; return; } // Save transparent quad in boats, which masks out water
+	if (material_mask == MATERIAL_LIGHTNING_BOLT) base_color = vec4(1.0);
+	if (base_color.a < 0.1 && material_mask != MATERIAL_BOAT) { discard; return; } // Save transparent quad in boats, which masks out water
 #elif !defined PROGRAM_GBUFFERS_TERRAIN_SOLID
 	if (base_color.a < 0.1) { discard; return; }
 #endif
@@ -268,7 +269,7 @@ void main() {
 #endif
 
 #if defined PROGRAM_GBUFFERS_TERRAIN && defined VANILLA_AO
-	#ifdef GTAO
+	#if SHADER_AO != SHADER_AO_NONE
 	const float vanilla_ao_strength = 0.9;
 	const float vanilla_ao_lift     = 0.5;
 	#else
@@ -285,12 +286,12 @@ void main() {
 
 #if defined PROGRAM_GBUFFERS_BLOCK
 	// parallax end portal
-	if (material_mask == 63) base_color.rgb = draw_end_portal();
+	if (material_mask == MATERIAL_END_PORTAL) base_color.rgb = draw_end_portal();
 #endif
 
 #if defined PROGRAM_GBUFFERS_BEACONBEAM
 	// Discard the translucent edge part of the beam
-	if (base_color.a < 0.99) discard;
+	if (base_color.a < 0.5) discard;
 #endif
 
 	vec2 adjusted_light_levels = light_levels;
@@ -304,7 +305,7 @@ void main() {
 	adjusted_light_levels *= mix(0.7, 1.0, material_ao);
 
 	#ifdef DIRECTIONAL_LIGHTMAPS
-	adjusted_light_levels *= get_directional_lightmaps(normal);
+	adjusted_light_levels *= get_directional_lightmaps(scene_pos, normal);
 	#endif
 #endif
 
@@ -353,4 +354,3 @@ void main() {
 	if (base_color.r < 0.29 && base_color.g < 0.45 && base_color.b > 0.75) discard;
 #endif
 }
-

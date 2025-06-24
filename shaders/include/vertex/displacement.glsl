@@ -10,6 +10,12 @@
 	#undef WATER_DISPLACEMENT
 #endif
 
+#include "/include/misc/material_masks.glsl"
+
+#if defined WAVING_PLANTS || defined WAVING_LEAVES
+#include "/include/weather/core.glsl"
+#endif
+
 #ifdef IS_IRIS 
 uniform vec3 eyePosition;
 #else 
@@ -47,6 +53,12 @@ float get_water_displacement(vec3 world_pos, float skylight) {
 vec3 get_wind_displacement(vec3 world_pos, float wind_speed, float wind_strength, bool is_tall_plant_top_vertex) {
 	const float wind_angle = 30.0 * degree;
 	const vec2  wind_dir   = vec2(cos(wind_angle), sin(wind_angle));
+
+	#if defined WORLD_OVERWORLD
+	// Adjust wind strength based on weather windiness
+	float windiness = weather_wind();
+	wind_strength *= 0.5 + windiness;
+	#endif
 
     // kidofcubes -- loopingsway
     // todo fix
@@ -89,24 +101,24 @@ vec3 animate_vertex(vec3 world_pos, bool is_top_vertex, float skylight, uint mat
 
 	switch (material_mask) {
 #ifdef WATER_DISPLACEMENT
-	case 1:
+	case MATERIAL_WATER:
 		world_pos.y += get_water_displacement(world_pos, skylight);
 		return world_pos;
 #endif
 
 #ifdef WAVING_PLANTS
-	case 2:
+	case MATERIAL_SMALL_PLANTS:
 		return world_pos + (get_wind_displacement(world_pos, wind_speed, wind_strength, false) + player_displacement) * float(is_top_vertex);
 
-	case 3:
+	case MATERIAL_TALL_PLANTS_LOWER:
 		return world_pos + (get_wind_displacement(world_pos, wind_speed, wind_strength, false) + player_displacement) * float(is_top_vertex);
 
-	case 4:
+	case MATERIAL_TALL_PLANTS_UPPER:
 		return world_pos + (get_wind_displacement(world_pos, wind_speed, wind_strength, is_top_vertex) + player_displacement);
 #endif
 
 #ifdef WAVING_LEAVES
-	case 5:
+	case MATERIAL_LEAVES:
 		return world_pos + get_wind_displacement(world_pos, wind_speed, wind_strength * 0.5, false);
 #endif
 

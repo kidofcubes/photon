@@ -12,7 +12,7 @@
 #include "/include/global.glsl"
 
 layout (location = 0) out vec4 clouds;
-layout (location = 1) out float apparent_distance;
+layout (location = 1) out vec2 clouds_data;
 
 /* RENDERTARGETS: 9,10 */
 
@@ -23,16 +23,23 @@ flat in vec3 sun_color;
 flat in vec3 moon_color;
 flat in vec3 sky_color;
 
-#include "/include/misc/weather_struct.glsl"
-flat in DailyWeatherVariation daily_weather_variation;
+flat in float aurora_amount;
+flat in mat2x3 aurora_colors;
+
+#include "/include/sky/clouds/parameters.glsl"
+flat in CloudsParameters clouds_params;
 #endif
 
 // ------------
 //   Uniforms
 // ------------
 
-uniform sampler3D colortex6; // 3D worley noise
-uniform sampler3D colortex7; // 3D curl noise
+uniform sampler3D colortex6; // 3D bubbly worley noise
+#define SAMPLER_WORLEY_BUBBLY colortex6
+uniform sampler3D colortex7; // 3D swirley worley noise
+#define SAMPLER_WORLEY_SWIRLEY colortex7
+
+uniform sampler2D colortex8; // cloud shadow map
 
 uniform sampler3D depthtex0; // atmospheric scattering LUT
 uniform sampler2D depthtex1;
@@ -44,10 +51,8 @@ uniform mat4 gbufferModelViewInverse;
 uniform mat4 gbufferProjection;
 uniform mat4 gbufferProjectionInverse;
 
-#ifdef SHADOW
 uniform mat4 shadowModelView;
 uniform mat4 shadowModelViewInverse;
-#endif
 
 uniform vec3 cameraPosition;
 uniform vec3 previousCameraPosition;
@@ -100,10 +105,18 @@ uniform float biome_humidity;
 #define ATMOSPHERE_SCATTERING_LUT depthtex0
 #define MIE_PHASE_CLAMP
 
+#ifdef CLOUDS_CUMULUS_PRECOMPUTE_LOCAL_COVERAGE
+	#define CLOUDS_USE_LOCAL_COVERAGE_MAP
+#endif
+
 #if defined WORLD_OVERWORLD
 #include "/include/sky/atmosphere.glsl"
 #include "/include/sky/aurora.glsl"
 #include "/include/sky/clouds.glsl"
+
+#if defined CREPUSCULAR_RAYS && !defined BLOCKY_CLOUDS
+#include "/include/sky/crepuscular_rays.glsl"
+#endif
 #endif
 
 #include "/include/misc/distant_horizons.glsl"
@@ -175,12 +188,27 @@ void main() {
 		dither
 	);
 
-	clouds.xyz        = result.scattering;
-	clouds.w          = result.transmittance;
-	apparent_distance = result.apparent_distance * rcp(CLOUDS_SCALE);
+	clouds.xyz    = result.scattering.xyz;
+	clouds.w      = result.transmittance;
+	clouds_data.x = result.apparent_distance * rcp(CLOUDS_SCALE);
+	clouds_data.y = result.scattering.w;
 #else
-	clouds            = vec4(0.0, 0.0, 0.0, 1.0);
-	apparent_distance = 1e6;
+	clouds        = vec4(0.0, 0.0, 0.0, 1.0);
+	clouds_data.x = 1e6;
+	clouds_data.y = 0.0;
+#endif
+
+	// Crepuscular rays 
+
+#if defined CREPUSCULAR_RAYS && !defined BLOCKY_CLOUDS
+	vec4 crepuscular_rays = draw_crepuscular_rays(
+		colortex8, 
+		ray_dir, 
+		distance_to_terrain > 0.0,
+		dither
+	);
+	clouds *= crepuscular_rays.w;
+	clouds.rgb += crepuscular_rays.xyz;
 #endif
 
 	// Aurora

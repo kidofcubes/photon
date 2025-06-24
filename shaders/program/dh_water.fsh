@@ -32,6 +32,11 @@ flat in vec2 atlas_tile_offset;
 flat in vec2 atlas_tile_scale;
 #endif
 
+#if defined WORLD_OVERWORLD 
+#include "/include/fog/overworld/parameters.glsl"
+flat in OverworldFogParameters fog_params;
+#endif
+
 // ------------
 //   Uniforms
 // ------------
@@ -132,10 +137,6 @@ uniform vec4 entityColor;
 	#undef SHADOW_COLOR
 #endif
 
-#ifdef SH_SKYLIGHT
-	#undef SH_SKYLIGHT
-#endif
-
 #if defined PROGRAM_GBUFFERS_TEXTURED || defined PROGRAM_GBUFFERS_PARTICLES_TRANSLUCENT
 	#define NO_NORMAL
 #endif
@@ -146,11 +147,11 @@ uniform vec4 entityColor;
 
 #include "/include/fog/simple_fog.glsl"
 #include "/include/lighting/diffuse_lighting.glsl"
-#include "/include/lighting/shadows.glsl"
+#include "/include/lighting/shadows/sampling.glsl"
 #include "/include/lighting/specular_lighting.glsl"
 #include "/include/misc/distant_horizons.glsl"
-#include "/include/misc/material.glsl"
-#include "/include/misc/water_normal.glsl"
+#include "/include/surface/material.glsl"
+#include "/include/surface/water_normal.glsl"
 #include "/include/utility/color.glsl"
 #include "/include/utility/encoding.glsl"
 #include "/include/utility/fast_math.glsl"
@@ -159,30 +160,6 @@ uniform vec4 entityColor;
 #ifdef CLOUD_SHADOWS
 #include "/include/lighting/cloud_shadows.glsl"
 #endif
-
-vec4 water_absorption_approx(vec4 color, float sss_depth, float layer_dist, float LoV, float NoV) {
-	vec3 biome_water_color = 2.0 * srgb_eotf_inv(tint.rgb) * rec709_to_working_color;
-	vec3 absorption_coeff = biome_water_coeff(biome_water_color);
-	float dist = layer_dist * float(isEyeInWater != 1 || NoV >= 0.0);
-
-	mat2x3 water_fog = water_fog_simple(
-		light_color,
-		ambient_color,
-		absorption_coeff,
-		light_levels,
-		dist,
-		-LoV,
-		sss_depth
-	);
-
-	float brightness_control = 1.0 - exp(-0.33 * layer_dist);
-		  brightness_control = (1.0 - light_levels.y) + brightness_control * light_levels.y;
-
-	return vec4(
-		color.rgb + water_fog[0] * (1.0 + 6.0 * sqr(water_fog[1])) * brightness_control,
-		1.0 - water_fog[1].x
-	);
-}
 
 void main() {
     // Clip close-by DH terrain
@@ -198,6 +175,18 @@ void main() {
 #if defined TAA && defined TAAU
 	if (clamp01(coord) != coord) discard;
 #endif
+
+	// Encode gbuffer data
+
+	gbuffer_data.x  = pack_unorm_2x8(tint.rg);
+	gbuffer_data.y  = pack_unorm_2x8(tint.b, clamp01(((is_water == 1) ? rcp(255.0) : 0.0)));
+	gbuffer_data.z  = pack_unorm_2x8(encode_unit_vector(normal));
+	gbuffer_data.w  = pack_unorm_2x8(dither_8bit(light_levels, 0.5));
+
+	if (is_water == 1.0) {
+		fragment_color = vec4(0.0);
+		return;
+	}
 
 	// Space conversions
 
@@ -225,21 +214,15 @@ void main() {
 
 	Material material; vec4 base_color;
 
-	if (is_water == 1) {
-		material = water_material;
-
-		base_color = vec4(0.0);
-	} else {
-		base_color = tint;
-		vec2 adjusted_light_levels = light_levels;
-		material = material_from(
-			base_color.rgb,
-			0u,
-			world_pos,
-			normal,
-			adjusted_light_levels
-		);
-	}
+	base_color = tint;
+	vec2 adjusted_light_levels = light_levels;
+	material = material_from(
+		base_color.rgb,
+		0u,
+		world_pos,
+		normal,
+		adjusted_light_levels
+	);
 
 	// Shadows
 
@@ -268,9 +251,11 @@ void main() {
 		scene_pos,
 		normal,
 		normal,
+		normal,
 		shadows,
 		light_levels,
 		1.0,
+		0.0,
 		sss_depth,
 #ifdef CLOUD_SHADOWS
 		cloud_shadows,
@@ -284,24 +269,7 @@ void main() {
 
 	// Blending
 
-	if (is_water == 1) {
-		// Water absorption
-
-		fragment_color = water_absorption_approx(
-            fragment_color,
-            0.0,
-            layer_dist,
-            LoV,
-            dot(normal, world_dir)
-        );
-
-        // Reverse water shadow 
-		fragment_color.rgb *= exp(5.0 * water_absorption_coeff);
-	} else {
-		fragment_color.a = base_color.a;
-	}
-
-	fragment_color = vec4(fragment_color.rgb / max(fragment_color.a, eps), fragment_color.a);
+	fragment_color = vec4(fragment_color.rgb / max(base_color.a, eps), base_color.a);
 
 	// Apply fog
 
@@ -309,12 +277,4 @@ void main() {
 	fragment_color.rgb = fragment_color.rgb * fog.a + fog.rgb;
 
 	fragment_color.a *= border_fog(scene_pos, world_dir);
-
-	// Encode gbuffer data
-
-	gbuffer_data.x  = pack_unorm_2x8(tint.rg);
-	gbuffer_data.y  = pack_unorm_2x8(tint.b, clamp01(((is_water == 1) ? rcp(255.0) : 0.0)));
-	gbuffer_data.z  = pack_unorm_2x8(encode_unit_vector(normal));
-	gbuffer_data.w  = pack_unorm_2x8(dither_8bit(light_levels, 0.5));
 }
-

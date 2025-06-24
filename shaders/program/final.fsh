@@ -11,7 +11,7 @@
 
 #include "/include/global.glsl"
 
-layout (location = 0) out vec3 scene_color;
+layout (location = 0) out vec3 fragment_color;
 
 in vec2 uv;
 
@@ -37,8 +37,30 @@ uniform sampler2D shadowtex0;
 #include "/include/utility/dithering.glsl"
 #include "/include/utility/text_rendering.glsl"
 
+#ifdef DISTANCE_VIEW
+uniform sampler2D depthtex0;
+
+uniform mat4 gbufferModelView;
+uniform mat4 gbufferModelViewInverse;
+uniform mat4 gbufferProjection;
+uniform mat4 gbufferProjectionInverse;
+
+uniform vec2 view_res;
+uniform vec2 taa_offset;
+
+uniform float near;
+uniform float far;
+
+#include "/include/misc/distant_horizons.glsl"
+#include "/include/utility/space_conversion.glsl"
+#endif
+
 const int debug_text_scale = 2;
 ivec2 debug_text_position = ivec2(0, int(viewHeight) / debug_text_scale);
+
+#if DEBUG_VIEW == DEBUG_VIEW_WEATHER 
+#include "/include/misc/debug_weather.glsl"
+#endif
 
 vec3 min_of(vec3 a, vec3 b, vec3 c, vec3 d, vec3 f) {
 	return min(a, min(b, min(c, min(d, f))));
@@ -101,7 +123,7 @@ vec3 cas_filter(sampler2D sampler, ivec2 texel, const float sharpness) {
 }
 
 void draw_iris_required_error_message() {
-	scene_color = vec3(sqr(sin(uv.xy + vec2(0.4, 0.2) * frameTimeCounter)) * 0.5 + 0.3, 1.0);
+	fragment_color = vec3(sqr(sin(uv.xy + vec2(0.4, 0.2) * frameTimeCounter)) * 0.5 + 0.3, 1.0);
 	begin_text(ivec2(gl_FragCoord.xy) / 3, ivec2(0, viewHeight / 3));
 	text.fg_col = vec4(0.0, 0.0, 0.0, 1.0);
 	text.bg_col = vec4(0.0);
@@ -113,7 +135,7 @@ void draw_iris_required_error_message() {
 	print_line();
 	print((_space, _space, _minus, _space, _I, _n, _s, _t, _a, _l, _l, _space, _I, _r, _i, _s, _space, _1, _dot, _6, _space, _o, _r, _space, _a, _b, _o, _v, _e));
 	print_line();
-	end_text(scene_color);
+	end_text(fragment_color);
 }
 
 void main() {
@@ -125,25 +147,57 @@ void main() {
     ivec2 texel = ivec2(gl_FragCoord.xy);
 
 	if (abs(MC_RENDER_QUALITY - 1.0) < 0.01) {
-		scene_color = cas_filter(colortex0, texel, CAS_INTENSITY * 2.0 - 1.0);
+		fragment_color = cas_filter(colortex0, texel, CAS_INTENSITY * 2.0 - 1.0);
 	} else {
-		scene_color = catmull_rom_filter_fast_rgb(colortex0, uv, 0.6);
-	    scene_color = display_eotf(scene_color);
+		fragment_color = catmull_rom_filter_fast_rgb(colortex0, uv, 0.6);
+	    fragment_color = display_eotf(fragment_color);
 	}
 
-	scene_color = dither_8bit(scene_color, bayer16(vec2(texel)));
+	fragment_color = dither_8bit(fragment_color, bayer16(vec2(texel)));
 
 #if   DEBUG_VIEW == DEBUG_VIEW_SAMPLER
 	if (clamp(texel, ivec2(0), ivec2(textureSize(DEBUG_SAMPLER, 0))) == texel) {
-		scene_color = texelFetch(DEBUG_SAMPLER, texel, 0).rgb;
-		scene_color = display_eotf(scene_color);
+		fragment_color = texelFetch(DEBUG_SAMPLER, texel, 0).rgb;
+		fragment_color = display_eotf(fragment_color);
 	}
+#elif DEBUG_VIEW == DEBUG_VIEW_WEATHER 
+	debug_weather(fragment_color);
+#endif
+
+#ifdef DISTANCE_VIEW 
+	float depth = texelFetch(depthtex0, ivec2(uv * view_res * taau_render_scale), 0).x;
+
+	vec3 position_screen = vec3(uv, depth);
+	vec3 position_view = screen_to_view_space(gbufferProjectionInverse, position_screen, true);
+
+	bool is_sky = depth == 1.0;
+
+	#ifdef DISTANT_HORIZONS
+    float depth_dh = texelFetch(dhDepthTex, texel, 0).x;
+	bool is_dh_terrain = is_distant_horizons_terrain(depth, depth_dh);
+
+	if (is_dh_terrain) {
+		position_view = screen_to_view_space(dhProjectionInverse, vec3(uv, depth_dh), true);
+	}
+
+	is_sky = is_sky && depth_dh == 1.0;
+	#endif
+
+	#if DISTANCE_VIEW_METHOD == DISTANCE_VIEW_DISTANCE
+	float dist = length(position_view);
+	#elif DISTANCE_VIEW_METHOD == DISTANCE_VIEW_DEPTH 
+	float dist = -position_view.z;
+	#endif
+
+	fragment_color = is_sky 
+		? vec3(1.0)
+		: vec3(clamp01(dist * rcp(DISTANCE_VIEW_MAX_DISTANCE)));
 #endif
 
 #if defined COLORED_LIGHTS && (defined WORLD_NETHER || !defined SHADOW)
 	// Must sample shadowtex0 so that the shadow map is rendered
 	if (uv.x < 0.0) {
-		scene_color = texture(shadowtex0, uv).rgb;
+		fragment_color = texture(shadowtex0, uv).rgb;
 	}
 #endif
 }

@@ -22,7 +22,8 @@ flat in vec3 ambient_color;
 flat in vec3 light_color;
 
 #if defined WORLD_OVERWORLD
-flat in mat2x3 air_fog_coeff[2];
+#include "/include/fog/overworld/parameters.glsl"
+flat in OverworldFogParameters fog_params;
 #endif
 
 // ------------
@@ -35,6 +36,7 @@ uniform sampler3D colortex0; // 3D worley noise
 uniform sampler2D colortex1; // gbuffer data
 uniform sampler2D colortex3; // translucent color
 uniform sampler2D colortex4; // sky map
+uniform sampler2D colortex8; // cloud shadow map
 
 uniform sampler2D depthtex0;
 uniform sampler2D depthtex1;
@@ -73,6 +75,7 @@ uniform float near;
 uniform float far;
 
 uniform float blindness;
+uniform float darknessFactor;
 uniform float eyeAltitude;
 uniform float rainStrength;
 uniform float wetness;
@@ -107,7 +110,7 @@ uniform float time_midnight;
 // ------------
 
 #if defined WORLD_OVERWORLD
-#include "/include/fog/air_fog_vl.glsl"
+#include "/include/fog/overworld/raymarched.glsl"
 #endif
 
 #if defined WORLD_END
@@ -119,6 +122,13 @@ uniform float time_midnight;
 #include "/include/utility/encoding.glsl"
 #include "/include/utility/random.glsl"
 #include "/include/utility/space_conversion.glsl"
+
+#if defined LPV_VL && defined COLORED_LIGHTS 
+uniform sampler3D light_sampler_a;
+uniform sampler3D light_sampler_b;
+
+#include "/include/fog/lpv_fog.glsl"
+#endif
 
 void main() {
 	ivec2 fog_texel  = ivec2(gl_FragCoord.xy);
@@ -202,6 +212,16 @@ void main() {
 		case -1:
 			break;
 	}
+#else 
+	fog_scattering = vec3(0.0);
+	fog_transmittance = vec3(1.0);
+#endif
+
+#if defined LPV_VL && defined COLORED_LIGHTS 
+	fog_scattering += get_lpv_fog_scattering(
+		world_start_pos,
+		world_end_pos,
+		dither
+	);
 #endif
 }
-

@@ -21,8 +21,14 @@ flat out vec3 sun_color;
 flat out vec3 moon_color;
 flat out vec3 sky_color;
 
-#include "/include/misc/weather_struct.glsl"
-flat out DailyWeatherVariation daily_weather_variation;
+flat out float aurora_amount;
+flat out mat2x3 aurora_colors;
+
+#include "/include/sky/clouds/parameters.glsl"
+flat out CloudsParameters clouds_params;
+
+#include "/include/fog/overworld/parameters.glsl"
+flat out OverworldFogParameters fog_params;
 #endif
 
 // ------------
@@ -71,18 +77,20 @@ uniform float biome_may_snow;
 uniform float biome_temperature;
 uniform float biome_humidity;
 
+uniform float desert_sandstorm;
+
 // ------------
 //   Includes
 // ------------
 
 #define ATMOSPHERE_SCATTERING_LUT depthtex0
-#define WEATHER_AURORA
-#define WEATHER_CLOUDS
 
 #if defined WORLD_OVERWORLD
+#include "/include/sky/aurora_colors.glsl"
 #include "/include/lighting/colors/light_color.glsl"
 #include "/include/lighting/colors/weather_color.glsl"
-#include "/include/misc/weather.glsl"
+#include "/include/weather/fog.glsl"
+#include "/include/weather/clouds.glsl"
 #endif
 
 #if defined WORLD_NETHER
@@ -110,17 +118,25 @@ vec3 get_ambient_color() {
 void main() {
 	uv = gl_MultiTexCoord0.xy;
 
-	light_color   = get_light_color();
+	light_color = get_light_color();
 	ambient_color = get_ambient_color();
 
 #if defined WORLD_OVERWORLD
-	daily_weather_variation = get_daily_weather_variation();
+	aurora_amount = get_aurora_amount();
+	aurora_colors = get_aurora_colors();
 
-	sky_color += daily_weather_variation.aurora_amount * AURORA_CLOUD_LIGHTING * mix(
-		daily_weather_variation.aurora_colors[0], 
-		daily_weather_variation.aurora_colors[1], 
+	Weather weather = get_weather();
+	clouds_params = get_clouds_parameters(weather);
+	fog_params = get_fog_parameters(weather);
+
+	// Aurora clouds influence
+	vec3 aurora_lighting = mix(
+		aurora_colors[0], 
+		aurora_colors[1], 
 		0.25
-	);
+	) * aurora_amount;
+	sky_color += AURORA_CLOUD_LIGHTING * aurora_lighting;
+	ambient_color += AURORA_CLOUD_LIGHTING * aurora_lighting;
 #endif
 
 	gl_Position = vec4(gl_Vertex.xy * 2.0 - 1.0, 0.0, 1.0);
