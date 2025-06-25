@@ -8,6 +8,9 @@ flat in vec3 upVec, sunVec;
 
 float SdotU = dot(sunVec, upVec);
 
+//Higher precision bayer pattern
+float bayer64(vec2 a) { return 0.25 * bayer32(0.5 * a) + bayer2(a); }
+
 float GetLuminance(vec3 color) {
     return dot(color, luminance_weights_rec709);
 }
@@ -332,7 +335,8 @@ vec2 lensFlareCheckOffsets[4] = vec2[4](
     vec2( 1.0,1.0)
 );
 
-float dither = bayer32(gl_FragCoord.xy);
+//Higher precision dither to prevent noise
+float dither = bayer64(gl_FragCoord.xy);
 float depthVisibility = 1.0;
 float cloudVisibility = 1.0;
 vec2 resolution = vec2(viewWidth, viewHeight);
@@ -641,15 +645,24 @@ vec3 strip1 = ComputeStripFlare(
     scene_color.b += strip1.b * 0.3 * sunVisibility * sunmask;
     #endif
 
-if (sunVec.z > 0.0) {
-    scene_color.r += strip1.r * 0.25 * sunVisibility * sunmask;
-    scene_color.g += strip1.g * 0.4 * sunVisibility * sunmask;
-    scene_color.b += strip1.b * 0.5 * sunVisibility * sunmask;
-} else {
-    scene_color.r += strip1.r * 0.14 * moonVisibility * sunmask;
-    scene_color.g += strip1.g * 0.13 * moonVisibility * sunmask;
-    scene_color.b += strip1.b * 0.0 * moonVisibility * sunmask;
+#if LENS_FLARE_MODE == 2
+    if (sunVec.z > 0.0) {
+        scene_color.r += strip1.r * 0.25 * sunVisibility * sunmask;
+        scene_color.g += strip1.g * 0.4 * sunVisibility * sunmask;
+        scene_color.b += strip1.b * 0.5 * sunVisibility * sunmask;
+    } else {
+        scene_color.r += strip1.r * 0.14 * moonVisibility * sunmask;
+        scene_color.g += strip1.g * 0.13 * moonVisibility * sunmask;
+        scene_color.b += strip1.b * 0.0 * moonVisibility * sunmask;
 }
+#else
+    if (sunVec.z > 0.0) {
+} else {
+        scene_color.r += strip1.r * 0.14 * moonVisibility * sunmask;
+        scene_color.g += strip1.g * 0.13 * moonVisibility * sunmask;
+        scene_color.b += strip1.b * 0.0 * moonVisibility * sunmask;
+}
+#endif
 
 //Blue strip
 scene_color.r += strip1.r * 0.1 * flaremultR * edgeMask;
@@ -674,14 +687,22 @@ scene_color.g += Xcross.g * 0.2 * sunmask;
 scene_color.b += Xcross.b * 0.3 * sunmask;
 #endif
 
-if (sunVec.z > 0.0) {
-    scene_color.r += Xcross.r * 0.25 * sunVisibility * sunmask;
-    scene_color.g += Xcross.g * 0.4 * sunVisibility * sunmask;
-    scene_color.b += Xcross.b * 0.5 * sunVisibility * sunmask;
-} else {
-    scene_color.r += Xcross.r * 0.14 * moonVisibility * sunmask;
-    scene_color.g += Xcross.g * 0.13 * moonVisibility * sunmask;
-    scene_color.b += Xcross.b * 0.0 * moonVisibility * sunmask;
+#if LENS_FLARE_MODE == 2
+    if (sunVec.z > 0.0) {
+        scene_color.r += Xcross.r * 0.25 * sunVisibility * sunmask;
+        scene_color.g += Xcross.g * 0.4 * sunVisibility * sunmask;
+        scene_color.b += Xcross.b * 0.5 * sunVisibility * sunmask;
+    } else {
+        scene_color.r += Xcross.r * 0.14 * moonVisibility * sunmask;
+        scene_color.g += Xcross.g * 0.13 * moonVisibility * sunmask;
+        scene_color.b += Xcross.b * 0.0 * moonVisibility * sunmask;
+}
+#else
+    if (sunVec.z > 0.0) {
+    } else {
+        scene_color.r += Xcross.r * 0.14 * moonVisibility * sunmask;
+        scene_color.g += Xcross.g * 0.13 * moonVisibility * sunmask;
+        scene_color.b += Xcross.b * 0.0 * moonVisibility * sunmask;
 }
 #endif
 
