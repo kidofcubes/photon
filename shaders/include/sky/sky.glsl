@@ -386,6 +386,9 @@ vec3 draw_sky(vec3 ray_dir) {
 //----------------------------------------------------------------------------//
 #elif defined WORLD_SPACE
 
+const float sun_angular_radius  = SUN_ANGULAR_RADIUS * degree;
+const float sun_luminance  = SUN_LUMINANCE * SUN_DISK_INTENSITY; // luminance of sun disk
+
 vec3 draw_space_moon(vec3 ray_dir, vec3 color) {
 	float nu = dot(ray_dir, moon_dir);
 
@@ -394,6 +397,17 @@ vec3 draw_space_moon(vec3 ray_dir, vec3 color) {
 	float limb_darkening = pow(1.0 - sqr(1.0 - center_to_edge), 0.25);
 
 	return color * step(0.0, center_to_edge) * limb_darkening;
+}
+
+vec3 draw_sun(vec3 ray_dir) {
+	float nu = dot(ray_dir, sun_dir);
+
+	// Limb darkening model from http://www.physics.hmc.edu/faculty/esin/a101/limbdarkening.pdf
+	const vec3 alpha = vec3(0.429, 0.522, 0.614);
+	float center_to_edge = max0(sun_angular_radius - fast_acos(nu));
+	vec3 limb_darkening = pow(vec3(1.0 - sqr(1.0 - center_to_edge)), 0.5 * alpha);
+
+	return sun_luminance * vec3(1.0) * step(0.0, center_to_edge) * limb_darkening;
 }
 
 vec3 draw_sky(vec3 ray_dir) {
@@ -407,12 +421,13 @@ vec3 draw_sky(vec3 ray_dir) {
 
 #ifdef STARS
 	// Stars
-	sky += draw_stars(ray_dir);
+	sky += draw_stars(ray_dir, 0.0);
 #endif
 
 #ifndef VANILLA_SUN
 	// Sun
 	sky += draw_sun(ray_dir);
+#endif
 #endif
 
 	return sky;

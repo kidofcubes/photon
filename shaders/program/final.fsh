@@ -32,11 +32,33 @@ uniform float frameTimeCounter;
 uniform sampler2D shadowtex0;
 #endif
 
+#if defined LENS_FLARE || defined RAIN_LENS
+uniform float viewWidth;
+uniform float rainStrength;
+#endif
+
+#ifdef LENS_FLARE
+uniform vec3 sunPosition;
+uniform mat4 gbufferProjection;
+uniform float aspectRatio;
+uniform sampler2D depthtex0;
+uniform int isEyeInWater;
+uniform float blindness;
+uniform sampler2D colortex11;
+#endif
+
+#ifdef RAIN_LENS
+uniform float biome_may_rain;
+uniform ivec2 eyeBrightnessSmooth;
+uniform vec3 playerLookVector;
+#endif
+
 #include "/include/utility/bicubic.glsl"
 #include "/include/utility/color.glsl"
 #include "/include/utility/dithering.glsl"
 #include "/include/utility/text_rendering.glsl"
 #include "/include/misc/lens_flare.glsl"
+#include "/include/misc/rain_lens.glsl"
 
 #ifdef DISTANCE_VIEW
 uniform sampler2D depthtex0;
@@ -201,8 +223,12 @@ void main() {
 	}
 #endif
 
-#ifdef LENS_FLARE
+#if defined LENS_FLARE && !defined WORLD_MOON
 LensFlare(fragment_color);
+#endif
+
+#if defined RAIN_LENS && !defined WORLD_NETHER && !defined WORLD_END && !defined WORLD_MOON; // Add !defined for modded worlds that won't rain
+RainLens(fragment_color);
 #endif
 }
 

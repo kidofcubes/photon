@@ -37,6 +37,8 @@ screen.dof_settings                    = DoF Settings
 screen.lens_flare_settings             = Lens Flare Settings
 screen.lens_flare_color                = Flare Color
 
+screen.rain_lens_settings              = 💧 Rain Lens Settings
+
 screen.tonemap_general_settings        = General Tonemap Settings
 screen.aces_settings                   = Academy Tonemap Settings
 screen.aces_pfe_settings               = Print Film Emulation LMT Settings
@@ -1049,6 +1051,13 @@ option.LF_EDGE_STRIP                   = Edge Blue Anamorphic Lens Flare
 option.LF_EDGE_STRIP.comment           = 2 Blue strip-shaped lens flares at the edge of the screen
 option.LF_GLOWDOTS                     = Glow Dots
 option.LF_GLOWDOTS.comment             = Pointy Fuzzy Glow Dots
+
+option.RAIN_LENS                       = Rain Lens
+option.RAIN_LENS.comment               = Simulates the effect of raindrops on lens when raining
+option.RAIN_LENS_INTENSITY             = Rain Lens Intensity
+option.RAINDROP_SIZE                   = Sliding Water Droplet Size
+option.STATIC_SIZE                     = Static Water Droplet Size
+option.RAINDROP_SPEED                  = Drop Speed
 
 option.BLOOM                           = Bloom
 option.BLOOM.comment                   = Soft "glow" effect around bright areas and light sources
