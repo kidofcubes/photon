@@ -50,6 +50,10 @@ Weather get_weather() {
 
 	// Time-of-day-based variation
 	weather.temperature -= 0.2 * time_sunrise + 0.2 * time_midnight;
+#else
+	weather.temperature = 0.5;
+	weather.humidity = 0.5;
+	weather.wind = 0.5;
 #endif
 
 #ifdef BIOME_WEATHER_VARIATION 
