@@ -34,6 +34,8 @@ screen.dof_settings                    = 景深设置
 screen.lens_flare_settings             = 镜头光晕设置
 screen.lens_flare_color                = 光晕颜色
 
+screen.rain_lens_settings              = 💧 镜头雨滴设置
+
 screen.tonemap_general_settings        = 通用色调映射设置
 screen.aces_settings                   = Academy 色调映射设置
 screen.aces_pfe_settings               = Print Film Emulation LMT 设置
@@ -939,6 +941,13 @@ option.LF_EDGE_STRIP                   = 屏幕边缘蓝色变形镜头光晕
 option.LF_EDGE_STRIP.comment           = 位于屏幕边缘的2个蓝色长条形光晕
 option.LF_GLOWDOTS                     = 荧光点
 option.LF_GLOWDOTS.comment             = 尖锐的模糊荧光点
+
+option.RAIN_LENS                       = 镜头雨滴
+option.RAIN_LENS.comment               = 模拟雨天雨水滴在镜头上的效果
+option.RAIN_LENS_INTENSITY             = 雨滴强度
+option.RAINDROP_SIZE                   = 流动水滴大小
+option.STATIC_SIZE                     = 静态水滴大小
+option.RAINDROP_SPEED                  = 下落速度
 
 option.BLOOM                           = 泛光
 option.BLOOM.comment                   = 明亮区域和光源周围的柔和泛光效果

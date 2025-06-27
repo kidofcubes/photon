@@ -4,22 +4,15 @@ https://www.sonicether.com/forum/viewtopic.php?f=4&t=175 (Original site, no long
 https://www.neocodex.us/forum/topic/126112-guide-add-lens-flare-to-seus-shader-pack/
 */
 
-uniform vec3 sunPosition;
-uniform mat4 gbufferProjection;
-uniform float aspectRatio;
-uniform sampler2D depthtex0;
-uniform int isEyeInWater;
-uniform float blindness;
-uniform float rainStrength;
-uniform float viewWidth;
-uniform sampler2D colortex11;
-
 flat in vec3 upVec, sunVec;
 
 float SdotU = dot(sunVec, upVec);
 
+//Higher precision bayer pattern
+float bayer64(vec2 a) { return 0.25 * bayer32(0.5 * a) + bayer2(a); }
+
 float GetLuminance(vec3 color) {
-    return dot(color, vec3(0.2126, 0.7152, 0.0722));
+    return dot(color, luminance_weights_rec709);
 }
 
 //--------------------FLARES--------------------//
@@ -33,29 +26,29 @@ vec3 ComputeRainbowFlare(
 ) {
     vec2 flare_scale = vec2(aspectRatio, 1.0) * vec2(scale);
     vec2 flare_pos = flare_scale - lightPos * flare_scale;
-    float flare_ = distance(flare_pos, uv * flare_scale);
-    flare_ = 0.5 - flare_;
-    flare_ = clamp(flare_ * fill, 0.0, 1.0);
-    flare_ = sin(flare_ * 1.57075);
-    flare_ = pow(flare_, 1.1);
-    flare_ *= powVal;
+    float flare = distance(flare_pos, uv * flare_scale);
+    flare = 0.5 - flare;
+    flare = clamp(flare * fill, 0.0, 1.0);
+    flare = sin(flare * 1.57075);
+    flare = pow(flare, 1.1);
+    flare *= powVal;
 
     vec2 flareD_scale = vec2(aspectRatio, 1.0) * vec2(d_scale);
     vec2 flareD_pos = 0.9 * flareD_scale - lightPos * 0.8 * flareD_scale;
-    float flareD_ = distance(flareD_pos, uv * flareD_scale);
-    flareD_ = 0.5 - flareD_;
-    flareD_ = clamp(flareD_ * d_fill, 0.0, 1.0);
-    flareD_ = sin(flareD_ * 1.57075);
-    flareD_ = pow(flareD_, 0.9);
-    flareD_ *= d_pow;
+    float flareD = distance(flareD_pos, uv * flareD_scale);
+    flareD = 0.5 - flareD;
+    flareD = clamp(flareD * d_fill, 0.0, 1.0);
+    flareD = sin(flareD * 1.57075);
+    flareD = pow(flareD, 0.9);
+    flareD *= d_pow;
 
-    flare_ = clamp(flare_ - flareD_, 0.0, 10.0);
-    flare_ *= sunmask;
+    flare = clamp(flare - flareD, 0.0, 10.0);
+    flare *= sunmask;
 
     return vec3(
-        flare_ * multR * tempColor2r,
-        flare_ * multG * tempColor2r,
-        flare_ * multB * tempColor2r
+        flare * multR * tempColor2r,
+        flare * multG * tempColor2r,
+        flare * multB * tempColor2r
     );
 }
 
@@ -71,32 +64,32 @@ vec3 ComputeFarFlare(
         ((1.0 - lightPos.x) * (offset + 1.0) - (offset * 0.5)) * flare_scale.x,
         ((1.0 - lightPos.y) * (offset + 1.0) - (offset * 0.5)) * flare_scale.y
     );
-    float flare_ = distance(flare_pos, vec2(uv.s * flare_scale.x, uv.t * flare_scale.y));
-    flare_ = 0.5 - flare_;
-    flare_ = clamp(flare_ * fill, 0.0, 1.0);
-    flare_ = sin(flare_ * 1.57075);
-    flare_ = pow(flare_, 1.1);
-    flare_ *= powVal;
+    float flare = distance(flare_pos, vec2(uv.s * flare_scale.x, uv.t * flare_scale.y));
+    flare = 0.5 - flare;
+    flare = clamp(flare * fill, 0.0, 1.0);
+    flare = sin(flare * 1.57075);
+    flare = pow(flare, 1.1);
+    flare *= powVal;
 
     vec2 flareD_scale = vec2(d_scale * aspectRatio, d_scale);
     vec2 flareD_pos = vec2(
         ((1.0 - lightPos.x) * (d_offset + 1.0) - (d_offset * 0.5)) * flareD_scale.x,
         ((1.0 - lightPos.y) * (d_offset + 1.0) - (d_offset * 0.5)) * flareD_scale.y
     );
-    float flareD_ = distance(flareD_pos, vec2(uv.s * flareD_scale.x, uv.t * flareD_scale.y));
-    flareD_ = 0.5 - flareD_;
-    flareD_ = clamp(flareD_ * d_fill, 0.0, 1.0);
-    flareD_ = sin(flareD_ * 1.57075);
-    flareD_ = pow(flareD_, 0.9);
-    flareD_ *= d_pow;
+    float flareD = distance(flareD_pos, vec2(uv.s * flareD_scale.x, uv.t * flareD_scale.y));
+    flareD = 0.5 - flareD;
+    flareD = clamp(flareD * d_fill, 0.0, 1.0);
+    flareD = sin(flareD * 1.57075);
+    flareD = pow(flareD, 0.9);
+    flareD *= d_pow;
 
-    flare_ = clamp(flare_ - flareD_, 0.0, 10.0);
-    flare_ *= sunmask;
+    flare = clamp(flare - flareD, 0.0, 10.0);
+    flare *= sunmask;
 
     return vec3(
-        flare_ * multR * tempColor2r,
-        flare_ * multG * tempColor2r,
-        flare_ * multB * tempColor2r
+        flare * multR * tempColor2r,
+        flare * multG * tempColor2r,
+        flare * multB * tempColor2r
     );
 }
 
@@ -111,18 +104,18 @@ vec3 ComputeCloseRingFlare(
         ((1.0 - lightPos.x) * (offset + 1.0) - (offset * 0.5)) * flare_scale.x,
         ((1.0 - lightPos.y) * (offset + 1.0) - (offset * 0.5)) * flare_scale.y
     );
-    float flare_ = distance(flare_pos, vec2(uv.s * flare_scale.x, uv.t * flare_scale.y));
-    flare_ = 0.5 - flare_;
-    flare_ = clamp(flare_ * fill, 0.0, 1.0);
-    flare_ = pow(flare_, powExp);
-    flare_ = sin(flare_ * sinFreq);
-    flare_ *= sunmask;
-    flare_ *= powVal;
+    float flare = distance(flare_pos, vec2(uv.s * flare_scale.x, uv.t * flare_scale.y));
+    flare = 0.5 - flare;
+    flare = clamp(flare * fill, 0.0, 1.0);
+    flare = pow(flare, powExp);
+    flare = sin(flare * sinFreq);
+    flare *= sunmask;
+    flare *= powVal;
 
     return vec3(
-        flare_ * multR * tempColor2r,
-        flare_ * multG * tempColor2r,
-        flare_ * multB * tempColor2r
+        flare * multR * tempColor2r,
+        flare * multG * tempColor2r,
+        flare * multB * tempColor2r
     );
 }
 
@@ -133,15 +126,15 @@ vec3 ComputeStripFlare(
     float multR, float multG, float multB
 ) {
     vec2 flare_pos = vec2(lightPos.x * aspectRatio * scale.x, lightPos.y * scale.y);
-    float flare_ = distance(flare_pos, vec2(uv.s * aspectRatio * scale.x, uv.t * scale.y));
-    flare_ = 0.5 - flare_;
-    flare_ = clamp(flare_ * fill, 0.0, 1.0);
-    flare_ = pow(flare_, powExp);
-    flare_ *= flare_pow;
+    float flare = distance(flare_pos, vec2(uv.s * aspectRatio * scale.x, uv.t * scale.y));
+    flare = 0.5 - flare;
+    flare = clamp(flare * fill, 0.0, 1.0);
+    flare = pow(flare, powExp);
+    flare *= flare_pow;
     return vec3(
-        flare_ * multR,
-        flare_ * multG,
-        flare_ * multB
+        flare * multR,
+        flare * multG,
+        flare * multB
     );
 }
 
@@ -194,12 +187,12 @@ vec3 ComputeMidOrangeSweep(
         ((1.0 - lightPos.x) * (offset + 1.0) - (offset * 0.5)) * flare_scale.x,
         ((1.0 - lightPos.y) * (offset + 1.0) - (offset * 0.5)) * flare_scale.y
     );
-    float flare_ = distance(flare_pos, vec2(uv.s * flare_scale.x, uv.t * flare_scale.y));
-    flare_ = 0.5 - flare_;
-    flare_ = clamp(flare_ * fill, 0.0, 1.0);
-    flare_ = sin(flare_ * sinFreq);
-    flare_ = pow(flare_, powExp);
-    flare_ *= powVal;
+    float flare = distance(flare_pos, vec2(uv.s * flare_scale.x, uv.t * flare_scale.y));
+    flare = 0.5 - flare;
+    flare = clamp(flare * fill, 0.0, 1.0);
+    flare = sin(flare * sinFreq);
+    flare = pow(flare, powExp);
+    flare *= powVal;
 
     //subtract
     vec2 flareD_scale = vec2(d_scale * aspectRatio, d_scale);
@@ -207,21 +200,21 @@ vec3 ComputeMidOrangeSweep(
         ((1.0 - lightPos.x) * (d_offset + 1.0) - (d_offset * 0.5)) * flareD_scale.x,
         ((1.0 - lightPos.y) * (d_offset + 1.0) - (d_offset * 0.5)) * flareD_scale.y
     );
-    float flareD_ = distance(flareD_pos, vec2(uv.s * flareD_scale.x, uv.t * flareD_scale.y));
-    flareD_ = 0.5 - flareD_;
-    flareD_ = clamp(flareD_ * d_fill, 0.0, 1.0);
-    flareD_ = sin(flareD_ * d_sinFreq);
-    flareD_ = pow(flareD_, d_powExp);
-    flareD_ *= d_powVal;
+    float flareD = distance(flareD_pos, vec2(uv.s * flareD_scale.x, uv.t * flareD_scale.y));
+    flareD = 0.5 - flareD;
+    flareD = clamp(flareD * d_fill, 0.0, 1.0);
+    flareD = sin(flareD * d_sinFreq);
+    flareD = pow(flareD, d_powExp);
+    flareD *= d_powVal;
 
     //main - sub
-    flare_ = clamp(flare_ - flareD_, 0.0, 10.0);
-    flare_ *= sunmask;
+    flare = clamp(flare - flareD, 0.0, 10.0);
+    flare *= sunmask;
 
     return vec3(
-        flare_ * multR,
-        flare_ * multG,
-        flare_ * multB
+        flare * multR,
+        flare * multG,
+        flare * multB
     );
 }
 
@@ -237,18 +230,18 @@ vec3 ComputeEdgeStrip(
         ((offset.y == 0.0 ? 1.0 - lightPos.y : lightPos.y) * (offset.y + 1.0) - (offset.y * 0.5)) * flare_scale.y
     );
     
-    float flare_ = distance(flare_pos, vec2(uv.s * aspectRatio * flare_scale.x, uv.t * flare_scale.y));
-    flare_ = 0.5 - flare_;
-    flare_ = clamp(flare_ * fill, 0.0, 1.0);
-    flare_ *= sunmask;
-    flare_ = pow(flare_, powExp);
-    flare_ *= powVal;
-    flare_ *= edgemaskx;
+    float flare = distance(flare_pos, vec2(uv.s * aspectRatio * flare_scale.x, uv.t * flare_scale.y));
+    flare = 0.5 - flare;
+    flare = clamp(flare * fill, 0.0, 1.0);
+    flare *= sunmask;
+    flare = pow(flare, powExp);
+    flare *= powVal;
+    flare *= edgemaskx;
     
     return vec3(
-        flare_ * multR,
-        flare_ * multG,
-        flare_ * multB
+        flare * multR,
+        flare * multG,
+        flare * multB
     );
 }
 
@@ -267,13 +260,13 @@ vec3 ComputeSmallSweep(
         ((1.0 - lightPos.x) * (offset + 1.0) - (offset * 0.5)) * flare_scale.x,
         ((1.0 - lightPos.y) * (offset + 1.0) - (offset * 0.5)) * flare_scale.y
     );
-    float flare_ = distance(flare_pos, vec2(uv.s * flare_scale.x, uv.t * flare_scale.y));
-    flare_ = 0.5 - flare_;
-    flare_ = clamp(flare_ * fill, 0.0, 1.0);
-    flare_ = sin(flare_ * 1.57075);
-    flare_ *= sunmask;
-    flare_ = pow(flare_, powExp);
-    flare_ *= powVal;
+    float flare = distance(flare_pos, vec2(uv.s * flare_scale.x, uv.t * flare_scale.y));
+    flare = 0.5 - flare;
+    flare = clamp(flare * fill, 0.0, 1.0);
+    flare = sin(flare * 1.57075);
+    flare *= sunmask;
+    flare = pow(flare, powExp);
+    flare *= powVal;
 
     //subtract
     vec2 flareD_scale = vec2(d_scale * aspectRatio, d_scale);
@@ -281,21 +274,21 @@ vec3 ComputeSmallSweep(
         ((1.0 - lightPos.x) * (d_offset + 1.0) - (d_offset * 0.5)) * flareD_scale.x,
         ((1.0 - lightPos.y) * (d_offset + 1.0) - (d_offset * 0.5)) * flareD_scale.y
     );
-    float flareD_ = distance(flareD_pos, vec2(uv.s * flareD_scale.x, uv.t * flareD_scale.y));
-    flareD_ = 0.5 - flareD_;
-    flareD_ = clamp(flareD_ * d_fill, 0.0, 1.0);
-    flareD_ = sin(flareD_ * 1.57075);
-    flareD_ *= sunmask;
-    flareD_ = pow(flareD_, d_powExp);
-    flareD_ *= d_powVal;
+    float flareD = distance(flareD_pos, vec2(uv.s * flareD_scale.x, uv.t * flareD_scale.y));
+    flareD = 0.5 - flareD;
+    flareD = clamp(flareD * d_fill, 0.0, 1.0);
+    flareD = sin(flareD * 1.57075);
+    flareD *= sunmask;
+    flareD = pow(flareD, d_powExp);
+    flareD *= d_powVal;
 
     //main - sub
-    flare_ = clamp(flare_ - flareD_, 0.0, 10.0);
+    flare = clamp(flare - flareD, 0.0, 10.0);
 
     return vec3(
-        flare_ * multR,
-        flare_ * multG,
-        flare_ * multB
+        flare * multR,
+        flare * multG,
+        flare * multB
     );
 }
 
@@ -310,16 +303,16 @@ vec3 ComputeGlowDot(
         ((1.0 - lightPos.x) * (offset + 1.0) - (offset * 0.5)) * flare_scale.x,
         ((1.0 - lightPos.y) * (offset + 1.0) - (offset * 0.5)) * flare_scale.y
     );
-    float flare_ = distance(flare_pos, vec2(uv.s * flare_scale.x, uv.t * flare_scale.y));
-    flare_ = 0.5 - flare_;
-    flare_ = clamp(flare_ * fill, 0.0, 1.0);
-    flare_ = pow(flare_, powExp);
-    flare_ *= sunmask;
-    flare_ *= powVal;
+    float flare = distance(flare_pos, vec2(uv.s * flare_scale.x, uv.t * flare_scale.y));
+    flare = 0.5 - flare;
+    flare = clamp(flare * fill, 0.0, 1.0);
+    flare = pow(flare, powExp);
+    flare *= sunmask;
+    flare *= powVal;
     return vec3(
-        flare_ * multR,
-        flare_ * multG,
-        flare_ * multB
+        flare * multR,
+        flare * multG,
+        flare * multB
     );
 }
 
@@ -342,11 +335,12 @@ vec2 lensFlareCheckOffsets[4] = vec2[4](
     vec2( 1.0,1.0)
 );
 
-float dither = bayer32(gl_FragCoord.xy);
+//Higher precision dither to prevent noise
+float dither = bayer64(gl_FragCoord.xy);
 float depthVisibility = 1.0;
 float cloudVisibility = 1.0;
 vec2 resolution = vec2(viewWidth, viewHeight);
-vec2 cScale = 40.0 / resolution;
+vec2 cScale = 20.0 / resolution * SUN_ANGULAR_RADIUS;
     for (int i = 0; i < 4; i++) {
         vec2 cOffset = (lensFlareCheckOffsets[i] - dither) * cScale;
         vec2 checkCoord1 = lightPos.xy + cOffset;
@@ -395,7 +389,7 @@ float inverseResponse = 1.0 - smoothstep(0.1, 0.9, perceivedLuminance);
 vec3 lenslc = vec3(1);
 
 //Prevent sun/moon flare visible below the horizon at night/day
-float moonVisibility = clamp01((SdotU + 0.1) * 5.0);
+float moonVisibility = pow(clamp(SdotU+0.15,0.0,0.15)/0.15,4.0);
 float sunVisibility = 1.0 - moonVisibility;
 
 #if LENS_FLARE_MODE == 2
@@ -429,6 +423,7 @@ float flaremultR = 0.8*lenslc.r*LF_COLOR_R;
 float flaremultG = 1.0*lenslc.g*LF_COLOR_G;
 float flaremultB = 1.5*lenslc.b*LF_COLOR_B;
 
+//float flarescale = mix(1.0, 1.0 * 0.1, (SUN_ANGULAR_RADIUS - 0.1) / (10.0 - 0.1));
 float flarescale = 1.0;
 const float flarescaleconst = 1.0;
 
@@ -650,15 +645,24 @@ vec3 strip1 = ComputeStripFlare(
     scene_color.b += strip1.b * 0.3 * sunVisibility * sunmask;
     #endif
 
-if (sunVec.z > 0.0) {
-    scene_color.r += strip1.r * 0.25 * sunVisibility * sunmask;
-    scene_color.g += strip1.g * 0.4 * sunVisibility * sunmask;
-    scene_color.b += strip1.b * 0.5 * sunVisibility * sunmask;
-} else {
-    scene_color.r += strip1.r * 0.14 * moonVisibility * sunmask;
-    scene_color.g += strip1.g * 0.13 * moonVisibility * sunmask;
-    scene_color.b += strip1.b * 0.0 * moonVisibility * sunmask;
+#if LENS_FLARE_MODE == 2
+    if (sunVec.z > 0.0) {
+        scene_color.r += strip1.r * 0.25 * sunVisibility * sunmask;
+        scene_color.g += strip1.g * 0.4 * sunVisibility * sunmask;
+        scene_color.b += strip1.b * 0.5 * sunVisibility * sunmask;
+    } else {
+        scene_color.r += strip1.r * 0.14 * moonVisibility * sunmask;
+        scene_color.g += strip1.g * 0.13 * moonVisibility * sunmask;
+        scene_color.b += strip1.b * 0.0 * moonVisibility * sunmask;
 }
+#else
+    if (sunVec.z > 0.0) {
+} else {
+        scene_color.r += strip1.r * 0.14 * moonVisibility * sunmask;
+        scene_color.g += strip1.g * 0.13 * moonVisibility * sunmask;
+        scene_color.b += strip1.b * 0.0 * moonVisibility * sunmask;
+}
+#endif
 
 //Blue strip
 scene_color.r += strip1.r * 0.1 * flaremultR * edgeMask;
@@ -683,14 +687,22 @@ scene_color.g += Xcross.g * 0.2 * sunmask;
 scene_color.b += Xcross.b * 0.3 * sunmask;
 #endif
 
-if (sunVec.z > 0.0) {
-    scene_color.r += Xcross.r * 0.25 * sunVisibility * sunmask;
-    scene_color.g += Xcross.g * 0.4 * sunVisibility * sunmask;
-    scene_color.b += Xcross.b * 0.5 * sunVisibility * sunmask;
-} else {
-    scene_color.r += Xcross.r * 0.14 * moonVisibility * sunmask;
-    scene_color.g += Xcross.g * 0.13 * moonVisibility * sunmask;
-    scene_color.b += Xcross.b * 0.0 * moonVisibility * sunmask;
+#if LENS_FLARE_MODE == 2
+    if (sunVec.z > 0.0) {
+        scene_color.r += Xcross.r * 0.25 * sunVisibility * sunmask;
+        scene_color.g += Xcross.g * 0.4 * sunVisibility * sunmask;
+        scene_color.b += Xcross.b * 0.5 * sunVisibility * sunmask;
+    } else {
+        scene_color.r += Xcross.r * 0.14 * moonVisibility * sunmask;
+        scene_color.g += Xcross.g * 0.13 * moonVisibility * sunmask;
+        scene_color.b += Xcross.b * 0.0 * moonVisibility * sunmask;
+}
+#else
+    if (sunVec.z > 0.0) {
+    } else {
+        scene_color.r += Xcross.r * 0.14 * moonVisibility * sunmask;
+        scene_color.g += Xcross.g * 0.13 * moonVisibility * sunmask;
+        scene_color.b += Xcross.b * 0.0 * moonVisibility * sunmask;
 }
 #endif
 
