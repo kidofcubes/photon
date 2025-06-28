@@ -87,12 +87,26 @@ vec2 render_cloud_shadow_map(vec2 uv) {
 #endif // CLOUDS_TOWERING_CUMULUS
 
 #ifdef CLOUDS_THUNDERHEAD
-	extinction_coeff = 0.55 * mix(0.9, 0.008, smoothstep(0.0, 0.3, abs(sun_dir.y))) * (1.0 - 0.33 * rainStrength) * CLOUDS_THUNDERHEAD_DENSITY;
-	t = intersect_sphere(ray_origin, light_dir, clouds_thunderhead_radius + 6.25 * clouds_thunderhead_thickness).y;
-	pos = ray_origin + light_dir * t;
-	distance_fade = exp2(-distance_fade_strength * length(pos.xy));
-	density = clouds_thunderhead_density(pos);
-	shadow *= exp(-1.00 * distance_fade * extinction_coeff * clouds_thunderhead_thickness * rcp(abs(light_dir.y) + eps) * density);
+	vec2 thunderhead_intersect = intersect_spherical_shell(ray_origin, light_dir, clouds_thunderhead_radius, clouds_thunderhead_top_radius + clouds_thunderhead_thickness);
+	
+	if (thunderhead_intersect.y > 0.0) {
+		float ray_length = thunderhead_intersect.y - max(0.0, thunderhead_intersect.x);
+		const uint shadow_steps = 8u;
+		float step_length = ray_length / float(shadow_steps);
+		vec3 ray_step = light_dir * step_length;
+		vec3 march_pos = ray_origin + light_dir * max(0.0, thunderhead_intersect.x);
+		
+		float thunderhead_optical_depth = 0.0;
+		extinction_coeff = mix(0.1, 0.1, smoothstep(0.0, 0.3, abs(sun_dir.y))) * (1.0 - 0.33 * rainStrength) * CLOUDS_THUNDERHEAD_DENSITY;
+		
+		for (uint i = 0u; i < shadow_steps; ++i) {
+			vec3 sample_pos = march_pos + ray_step * (float(i) + 0.5);
+			distance_fade = exp2(-distance_fade_strength * length(sample_pos.xy));
+			density = clouds_thunderhead_density(sample_pos);
+			thunderhead_optical_depth += density * extinction_coeff * step_length * distance_fade;
+		}
+		shadow *= exp(-thunderhead_optical_depth * rcp(abs(light_dir.y) + eps));
+	}
 #endif // CLOUDS_THUNDERHEAD
 
 #ifdef CLOUDS_ALTOCUMULUS

@@ -12,8 +12,8 @@ float clouds_thunderhead_altitude_shaping(float density, float altitude_fraction
 	float anvil_height = altitude_fraction - anvil_coverage;
 	
 	// Create parabolic anvil shape
-	float anvil_shape = (9.0 - anvil_height) * (8.5 - anvil_height);
-	float anvil_strength = smoothstep(-2.0, 50.0, altitude_fraction) * 0.1;
+	float anvil_shape = (25.5 - anvil_height) * (25.5 - anvil_height);
+	float anvil_strength = smoothstep(-2.0, 270.0, altitude_fraction) * 0.1;
 	
 	// Apply anvil carving
 	density -= anvil_strength * anvil_shape;
@@ -48,35 +48,34 @@ float clouds_thunderhead_density(vec3 pos) {
 	if (density < eps) return 0.0;
 
 #ifndef PROGRAM_PREPARE
-	// Curl noise used to warp the 3D noise into swirling shapes
-	vec3 curl = (0.01 * CLOUDS_THUNDERHEAD_CURL_STRENGTH) * texture(colortex7, 0.002 * pos).xyz * smoothstep(0.4, 1.0, 1.0 - altitude_fraction);
 	vec3 wind = vec3(wind_velocity * world_age, 0.0).xzy;
 
 	// 3D worley noise for detail
-	float worley_0 = texture(colortex6, (pos + 0.2 * wind) * 0.0002 + curl * 1.0).x;
-	float worley_1 = texture(colortex6, (pos + 0.4 * wind) * 0.0002 + curl * 3.0).x;
+	float worley_0 = texture(SAMPLER_WORLEY_BUBBLY, (pos + 0.2 * wind) * 0.00004).x;
+	float worley_1 = texture(SAMPLER_WORLEY_BUBBLY, (pos + 0.4 * wind) * 0.001).x;
+
 #else
 	const float worley_0 = 0.5;
 	const float worley_1 = 0.5;
-#endif // PROGRAM_PREPARE
+#endif // !PROGRAM_PREPARE
 
-	float detail_fade = 0.02 * smoothstep(0.85, 1.0, 1.0 - altitude_fraction)
-	                  - 0.35 * smoothstep(0.05, 0.5, altitude_fraction) + 0.6;
+	float detail_fade = 0.20 * smoothstep(0.85, 1.0, 1.0 - altitude_fraction)
+	                  - 0.50 * smoothstep(0.05, 0.5, altitude_fraction) + 0.6;
 
-	float bottom_detail_boost = 1.0 + (1.0 - smoothstep(0.0, 0.6, altitude_fraction)) * 100.0;
+	float bottom_detail_boost = 1.0 + (1.0 - smoothstep(-3.0, 1.5, altitude_fraction)) * 100.0;
 	density -= clouds_params.thunderhead_detail_weights.x * sqr(worley_0) * dampen(clamp01(1.0 - density)) * bottom_detail_boost;
 	density -= clouds_params.thunderhead_detail_weights.y * sqr(worley_1) * dampen(clamp01(1.0 - density)) * detail_fade;
 
 	// Adjust density so that the clouds are wispy at the bottom and hard at the top
 	density  = max0(density);
-	density  = 1.0 - pow(
-		1.0 - density, mix(
+	density  = lift(
+		density, mix(
 			clouds_params.thunderhead_edge_sharpening.x,
 			clouds_params.thunderhead_edge_sharpening.y, 
 			altitude_fraction
 		)
 	);
-	density *= CLOUDS_ROUGHNESS + 1.9 * smoothstep(0.2, 0.7, altitude_fraction);
+	density *= CLOUDS_ROUGHNESS + 0.2 * smoothstep(0.2, 0.7, altitude_fraction);
 
 	return density;
 }
@@ -128,7 +127,7 @@ vec2 clouds_thunderhead_scattering(
 	vec3 phase_g = pow(vec3(0.6, 0.9, 0.3), vec3(1.0 + light_optical_depth));
 
 	// Add height-based darkening
-	float bottom_darkening = mix(0.3, 1.0, smoothstep(0.0, 3.0, altitude_fraction));
+	float bottom_darkening = mix(0.1, 1.0, smoothstep(0.0, 3.0, altitude_fraction));
 
 	// Calculate if we're below altocumulus layer
 	float current_altitude = CLOUDS_THUNDERHEAD_ALTITUDE * (1.0 + altitude_fraction * CLOUDS_THUNDERHEAD_THICKNESS);
@@ -173,7 +172,7 @@ CloudsResult draw_thunderhead_clouds(
 #endif // PROGRAM_DEFERRED0
 	const uint  lighting_steps        = CLOUDS_THUNDERHEAD_LIGHTING_STEPS;
 	const uint  ambient_steps         = CLOUDS_THUNDERHEAD_AMBIENT_STEPS;
-	const float max_ray_length        = 100e4;
+	const float max_ray_length        = 70e4;
 	const float min_transmittance     = 0.075;
 	const float planet_albedo         = 0.4;
 	const vec3  sky_dir               = vec3(0.0, 1.0, 0.0);

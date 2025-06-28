@@ -219,7 +219,7 @@ CloudsParameters get_clouds_parameters(Weather weather) {
 	params.towering_cumulus_detail_weights = mix(vec2(0.33, 0.40), vec2(0.25, 0.20), sqr(params.l0_cumulus_stratus_blend)) * CLOUDS_TOWERING_CUMULUS_DETAIL_STRENGTH;
 	params.towering_cumulus_edge_sharpening = mix(vec2(3.0, 8.0), vec2(1.0, 2.0), params.l0_cumulus_stratus_blend);
 	params.thunderhead_altitude_scale = 0.8 * rcp(dynamic_thickness_old * clouds_thunderhead_thickness);
-	params.thunderhead_detail_weights = mix(vec2(0.01, 0.05), vec2(0.25, 0.20), sqr(params.l0_cumulus_stratus_blend)) * CLOUDS_THUNDERHEAD_DETAIL_STRENGTH;
+	params.thunderhead_detail_weights = mix(vec2(0.1, 0.1), vec2(0.25, 0.20), sqr(params.l0_cumulus_stratus_blend)) * CLOUDS_THUNDERHEAD_DETAIL_STRENGTH;
 	params.thunderhead_edge_sharpening = mix(vec2(3.0, 8.0), vec2(1.0, 2.0), params.l0_cumulus_stratus_blend);
 	
 	return params;

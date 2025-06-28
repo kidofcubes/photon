@@ -122,6 +122,10 @@ vec3 draw_galaxy(vec3 ray_dir, out float galaxy_luminance) {
 vec3 draw_galaxy(vec3 ray_dir, out float galaxy_luminance) {
 	const vec3 galaxy_tint = vec3(GALAXY_TINT_R, GALAXY_TINT_G, GALAXY_TINT_B) * GALAXY_INTENSITY;
 
+	// Create a smooth fade-in transition starting earlier
+	float fade_factor = 1.0 - smoothstep(-0.25, 0.05, sun_dir.y);
+	if (fade_factor <= 0.0) { galaxy_luminance = 0.0; return vec3(0.0); }
+
 	float galaxy_intensity = 0.05 + 1.0 * linear_step(-0.1, 0.25, -sun_dir.y);
 
 	float lon = atan(ray_dir.x, ray_dir.z);
@@ -129,7 +133,7 @@ vec3 draw_galaxy(vec3 ray_dir, out float galaxy_luminance) {
 
 	vec3 galaxy = texture(
 		galaxy_sampler,
-		vec2(lon * rcp(tau) + 0.5, lat * rcp(pi))
+		vec2(lon * rcp(tau) + 0.1, lat * rcp(pi))
 	).rgb;
 
 	galaxy = srgb_eotf_inv(galaxy) * rec709_to_working_color;
@@ -144,7 +148,7 @@ vec3 draw_galaxy(vec3 ray_dir, out float galaxy_luminance) {
 		2.0
 	);
 
-	return max0(galaxy);
+	return max0(galaxy * fade_factor);
 }
 #endif
 
@@ -240,6 +244,9 @@ vec3 draw_sky(vec3 ray_dir, vec3 atmosphere) {
 	#endif
 #endif
 
+	// Nebula
+	sky += draw_nebula(ray_dir, galaxy_luminance);
+
 #ifndef VANILLA_SUN
 	// Sun
 	sky += draw_sun(ray_dir);
@@ -295,8 +302,6 @@ vec3 draw_sky(vec3 ray_dir, vec3 atmosphere) {
 	sky = DrawShootingStars(sky, ray_dir);
 #endif
 	
-	// Nebula
-	sky = draw_nebula(ray_dir, sky);
 
 #if !defined PROGRAM_DEFERRED0
 	// Fade lower part of sky into cave fog color when underground so that the sky isn't visible

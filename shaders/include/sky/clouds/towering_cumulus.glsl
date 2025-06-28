@@ -8,7 +8,7 @@
 // altitude_fraction := 0 at the bottom of the cloud layer and 1 at the top
 float clouds_towering_cumulus_altitude_shaping(float density, float altitude_fraction) {
 	// Carve egg shape to make the cloud more vertical
-	density -= smoothstep(0.0, 8.0, altitude_fraction) * 0.6;
+	density -= smoothstep(0.0, 17.0, altitude_fraction) * 0.6;
 
 	// Reduce density at the top and bottom of the cloud
 	density *= smoothstep(0.0, 0.2, altitude_fraction);
@@ -30,7 +30,7 @@ float clouds_towering_cumulus_density(vec3 pos) {
 	// 2D noise for base shape and coverage
 	vec3 noise = vec3(
 		texture(noisetex, (0.0000001 / CLOUDS_TOWERING_CUMULUS_SIZE) * pos.xz).x, // cloud coverage
-		texture(noisetex, (0.000002 / CLOUDS_TOWERING_CUMULUS_SIZE) * pos.xz).x, // cloud coverage
+		texture(noisetex, (0.0000013 / CLOUDS_TOWERING_CUMULUS_SIZE) * pos.xz).x, // cloud coverage
 		texture(noisetex, (0.000008 / CLOUDS_TOWERING_CUMULUS_SIZE) * pos.xz).w  // cloud shape
 	);
 
@@ -41,31 +41,29 @@ float clouds_towering_cumulus_density(vec3 pos) {
 	if (density < eps) return 0.0;
 
 #ifndef PROGRAM_PREPARE
-	// Curl noise used to warp the 3D noise into swirling shapes
-	vec3 curl = (0.01 * CLOUDS_TOWERING_CUMULUS_CURL_STRENGTH) * texture(colortex7, 0.001 * pos).xyz * smoothstep(0.4, 1.0, 1.0 - altitude_fraction);
 	vec3 wind = vec3(wind_velocity * world_age, 0.0).xzy;
 
 	// 3D worley noise for detail
-	float worley_0 = texture(colortex6, (pos + 0.2 * wind) * 0.00015 + curl * 1.0).x;
-	float worley_1 = texture(colortex6, (pos + 0.4 * wind) * 0.00095 + curl * 3.0).x;
+	float worley_0 = texture(SAMPLER_WORLEY_BUBBLY, (pos + 0.2 * wind) * 0.00006).x;
+	float worley_1 = texture(SAMPLER_WORLEY_BUBBLY, (pos + 0.4 * wind) * 0.001).x;
 #else
 	const float worley_0 = 0.5;
 	const float worley_1 = 0.5;
 #endif // !PROGRAM_PREPARE
 
-	float detail_fade = 0.02 * smoothstep(0.85, 1.0, 1.0 - altitude_fraction)
-	                  - 0.35 * smoothstep(0.05, 0.5, altitude_fraction) + 0.6;
+	float detail_fade = 0.20 * smoothstep(0.85, 1.0, 1.0 - altitude_fraction)
+	                  - 0.88 * smoothstep(0.05, 0.05, altitude_fraction) + 0.8;
 
 	density -= clouds_params.towering_cumulus_detail_weights.x * sqr(worley_0) * dampen(clamp01(1.0 - density));
 	density -= clouds_params.towering_cumulus_detail_weights.y * sqr(worley_1) * dampen(clamp01(1.0 - density)) * detail_fade;
 
 	// Adjust density so that the clouds are wispy at the bottom and hard at the top
 	density  = max0(density);
-	density  = 1.0 - pow(
-		1.0 - density, mix(
-		clouds_params.towering_cumulus_edge_sharpening.x,
-		clouds_params.towering_cumulus_edge_sharpening.y, 
-		altitude_fraction
+	density  = lift(
+		density, mix(
+			clouds_params.towering_cumulus_edge_sharpening.x,
+			clouds_params.towering_cumulus_edge_sharpening.y, 
+			altitude_fraction
 		)
 	);
 	density *= CLOUDS_ROUGHNESS + 0.9 * smoothstep(0.2, 0.7, altitude_fraction);

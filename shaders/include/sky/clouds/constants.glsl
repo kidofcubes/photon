@@ -3,7 +3,7 @@
 
 #include "/include/sky/atmosphere.glsl"
 
-const float clouds_cumulus_radius          = planet_radius + CLOUDS_CUMULUS_ALTITUDE;
+const float clouds_cumulus_radius          = planet_radius + CLOUDS_CUMULUS_ALTITUDE * 2.45;
 const float clouds_cumulus_thickness       = CLOUDS_CUMULUS_ALTITUDE * CLOUDS_CUMULUS_THICKNESS;
 const float clouds_cumulus_top_radius      = clouds_cumulus_radius + clouds_cumulus_thickness;
 
@@ -38,13 +38,13 @@ const float clouds_cumulonimbus_blend_distance        = 6.0;
 const float clouds_cumulonimbus_extinction_coeff      = 0.05 * CLOUDS_CUMULONIMBUS_DENSITY;
 float clouds_cumulonimbus_scattering_coeff            = clouds_cumulonimbus_extinction_coeff * (1.0 - 0.33 * rainStrength);
 
-const float clouds_thunderhead_radius                 = planet_radius + CLOUDS_THUNDERHEAD_ALTITUDE * 0.6;
+const float clouds_thunderhead_radius                 = planet_radius + CLOUDS_THUNDERHEAD_ALTITUDE;
 const float clouds_thunderhead_thickness              = CLOUDS_THUNDERHEAD_ALTITUDE * CLOUDS_THUNDERHEAD_THICKNESS;
-const float clouds_thunderhead_top_radius             = clouds_thunderhead_radius + clouds_thunderhead_thickness * 15.0;
+const float clouds_thunderhead_top_radius             = clouds_thunderhead_radius + clouds_thunderhead_thickness * 25.0;
 
-const float clouds_towering_cumulus_radius            = planet_radius + CLOUDS_TOWERING_CUMULUS_ALTITUDE * 1.5;
+const float clouds_towering_cumulus_radius            = planet_radius + CLOUDS_TOWERING_CUMULUS_ALTITUDE * 2.3;
 const float clouds_towering_cumulus_thickness         = CLOUDS_TOWERING_CUMULUS_ALTITUDE * CLOUDS_TOWERING_CUMULUS_THICKNESS;
-const float clouds_towering_cumulus_top_radius        = clouds_towering_cumulus_radius + clouds_towering_cumulus_thickness * 7.0;
+const float clouds_towering_cumulus_top_radius        = clouds_towering_cumulus_radius + clouds_towering_cumulus_thickness * 10.0;
 
 // GAMS Clouds - Old daily weather variables set in Settings, default use D0 values
 vec2 clouds_towering_cumulus_coverage                 = vec2(CLOUDS_TOWERING_CUMULUS_MIN, CLOUDS_TOWERING_CUMULUS_MAX);

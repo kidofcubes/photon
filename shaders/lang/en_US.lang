@@ -394,15 +394,13 @@ option.STARS_SHARP.comment             = Renders stars as sharp squares
 option.NEBULA_ENABLED                  = ☁ NEBULA
 option.NEBULA_ENABLED.comment          = Enables the nebula effect
 screen.nebula_color                    = ☁ Nebula Color
-screen.nebula_color.comment            = Adjust the colors of different nebula components:      Cloud 1-4 Color: Sets the color for each cloud layer        Space Color: Determines the background color of space      These settings affect the overall appearance and mood of the nebula
-option.NEBULA_SCALE                    = ☁ Nebula Scale
-option.NEBULA_SCALE.comment            = Controls the scale of the nebula. Higher values make the nebula appear more zoomed in.
-option.NEBULA_DENSITY                  = ☁ Nebula Density
-option.NEBULA_DENSITY.comment          = Controls the density of the nebula. Higher values make the nebula more dense.
-option.NEBULA_BRIGHTNESS               = ☁ Nebula Brightness
-option.NEBULA_BRIGHTNESS.comment       = Controls the brightness of the nebula. Higher values make the nebula more bright.
-option.NEBULA_MOVEMENT_SPEED           = ☁ Nebula Movement Speed
-option.NEBULA_MOVEMENT_SPEED.comment   = Controls the speed of the nebula movement. Higher values make the nebula move faster.
+screen.nebula_color.comment            = Adjust the colors of different nebula components:      Cloud 1-4 Color: Sets the color for each cloud layer   These settings affect the overall appearance and mood of the nebula
+option.NEBULA_ROTATION                 = ☁ Nebula Rotation
+option.NEBULA_ROTATION.comment         = Rotates the nebula with the Sun/Moon
+option.NEBULA_INTENSITY                = ☁ Nebula Intensity
+option.NEBULA_INTENSITY.comment        = Controls the intensity of the nebula. Higher values make the nebula more intense.
+option.NEBULA_CLUSTER_COUNT            = ☁ Nebula Cluster Count
+option.NEBULA_CLUSTER_COUNT.comment    = Controls the number of nebula clusters. Higher values make the nebula appear more in the sky.
 
 # Nebula Colors
 option.NEBULA_COLOR1_R = §c☁§r Nebula Color 1 Red

@@ -103,11 +103,22 @@ vec3 DrawShootingStars(vec3 color, vec3 worldPosition) {
     );
 
     float stars = 0.0;
-    for (int i = 0; i < 20; i++) {
-        vec2 offsetUV = uv + t * directions[i] * (0.8 + 0.4 * float(i) / 20.0);
+    for (int i = 0; i < SHOOTING_STARS_COUNT; i++) {
+        vec2 offsetUV = uv + t * directions[i] * (0.8 + 0.4 * float(i) / float(SHOOTING_STARS_COUNT));
         stars += ShootingStar(offsetUV, startPositions[i], directions[i]);
     }
 
     vec3 shootingStars = vec3(clamp(stars, 0.0, 1.0));
+    
+    // Apply atmosphere transmittance to shooting stars
+    if (stars > 0.0) {
+        vec3 ray_dir = normalize(worldPosition); 
+        vec3 ray_origin = vec3(0.0, planet_radius, 0.0);
+        vec3 transmittance = atmosphere_transmittance(ray_origin, ray_dir);
+        
+        // Apply transmittance to shooting stars
+        shootingStars *= transmittance;
+    }
+    
     return color + shootingStars * visibility;
 }
