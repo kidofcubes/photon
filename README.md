@@ -1,6 +1,6 @@
 <br><br>
 
-<h1 align = "center">Photon Shaders</h1>
+# fork of [photon](https://github.com/sixthsurge/photon)
 
 <p align = "center">A gameplay-focused shader pack for Minecraft</p>
 
@@ -21,6 +21,10 @@
 * [Sledgehammer Games](https://www.sledgehammergames.com/) - Bloom downsampling method used in Call of Duty Advanced Warfare (described [here](http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare))
 * http://momentsingrapics.de/ - Blue noise texture
 * [NASA Scientific Visualization Studio](https://svs.gsfc.nasa.gov/4851) - Galaxy image
+
+
+### fork acknowledgments 
+* [LexBoosT](https://lextermina7.wixsite.com) for a lot of features/things/code from AstraLex
 
 ## Installation
 
@@ -79,3 +83,4 @@
 
 - For questions, suggestions and news regarding this shader pack, head to my [discord server](https://discord.gg/ngEW66HScd)
 - You can also [give me money](https://ko-fi.com/sixthsurge) if you want to 
+
