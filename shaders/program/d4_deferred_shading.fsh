@@ -153,6 +153,7 @@ uniform float viewWidth, viewHeight, aspectRatio;
 
 /*
 const bool colortex5MipmapEnabled = true;
+const bool colortex11MipmapEnabled = true;
 */
 
 // ------------

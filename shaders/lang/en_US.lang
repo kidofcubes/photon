@@ -433,10 +433,6 @@ option.AIR_FOG_RAYLEIGH_FALLOFF_START     = Rayleigh Falloff Start
 option.AIR_FOG_RAYLEIGH_FALLOFF_START.comment = Altitude above sea level at which the rayleigh fog begins to decrease
 option.AIR_FOG_RAYLEIGH_FALLOFF_HALF_LIFE = Rayleigh Falloff Half-Life
 option.AIR_FOG_RAYLEIGH_FALLOFF_HALF_LIFE.comment = Altitude above the Rayleigh Falloff Start where the rayleigh fog density is halved
-option.AIR_FOG_MIE_FALLOFF_START          = Mie Falloff Start
-option.AIR_FOG_MIE_FALLOFF_START.comment  = Altitude above sea level at which the mie fog begins to decrease
-option.AIR_FOG_MIE_FALLOFF_HALF_LIFE      = Mie Falloff Half-Life
-option.AIR_FOG_MIE_FALLOFF_HALF_LIFE.comment = Altitude above the Mie Falloff Start where the mie fog density is halved
 
 option.AIR_FOG_RAYLEIGH_DENSITY        = Normal Density
 option.AIR_FOG_RAYLEIGH_R              = §4Red
@@ -473,9 +469,6 @@ option.AIR_FOG_RAYLEIGH_R_SWAMP        = §4Red
 option.AIR_FOG_RAYLEIGH_G_SWAMP        = §2Green
 option.AIR_FOG_RAYLEIGH_B_SWAMP        = §1Blue
 
-option.AIR_FOG_RAYLEIGH_FALLOFF_START     = Altitude Fade Start
-option.AIR_FOG_RAYLEIGH_FALLOFF_HALF_LIFE = Altitude Fade Half Life
-
 # Mie Fog
 option.AIR_FOG_MIE_DENSITY_MORNING     = Morning Density
 option.AIR_FOG_MIE_DENSITY_NOON        = Noon Density
@@ -483,8 +476,11 @@ option.AIR_FOG_MIE_DENSITY_EVENING     = Evening Density
 option.AIR_FOG_MIE_DENSITY_MIDNIGHT    = Midnight Density
 option.AIR_FOG_MIE_DENSITY_RAIN        = Rain Density
 option.AIR_FOG_MIE_DENSITY_BLUE_HOUR   = Dawn/Dusk Density
-option.AIR_FOG_MIE_FALLOFF_START       = Altitude Fade Start
-option.AIR_FOG_MIE_FALLOFF_HALF_LIFE   = Altitude Fade Half Life
+option.AIR_FOG_MIE_FALLOFF_START          = Altitude Fade Start
+option.AIR_FOG_MIE_FALLOFF_START.comment  = Altitude above sea level at which the mie fog begins to decrease
+option.AIR_FOG_MIE_FALLOFF_HALF_LIFE      = Altitude Fade Half Life
+option.AIR_FOG_MIE_FALLOFF_HALF_LIFE.comment = Altitude above the Mie Falloff Start where the mie fog density is halved
+
 
 # Materials settings
 
@@ -699,8 +695,10 @@ option.DH_OVERDRAW_DISTANCE            = Overdraw Distance
 option.DH_OVERDRAW_FADE_LENGTH         = Overdraw Fade Length
 option.NOISE_ON_DH_TERRAIN             = Noise on DH Terrain
 option.ENCHANTMENT_GLINT_BRIGHTNESS    = Enchantment Glint Brightness
-option.USE_SEPARATE_ENTITY_DRAWS            = Use "Separate Entity Draws"
-option.USE_SEPARATE_ENTITY_DRAWS.comment    = "separateEntityDraws" is an Iris feature enabling shaderpacks which use deferred-forward hybrid shading, like Photon, to correctly render translucent entities and other objects. However, it can be the cause of some issues. Expect rendering issues such as translucent entities becoming opaque if you disable this!
+option.USE_SEPARATE_ENTITY_DRAWS       = Use "Separate Entity Draws"
+comment.USE_SEPARATE_ENTITY_DRAWS      = "separateEntityDraws" is an Iris feature enabling shaderpacks which use deferred-forward hybrid shading, like Photon, to correctly render translucent entities and other objects. However, it can be the cause of some issues. Expect rendering issues such as translucent entities becoming opaque if you disable this!
+option.DITHERED_TRANSLUCENCY_FALLBACK  = Dithered Translucency Fallback 
+comment.DITHERED_TRANSLUCENCY_FALLBACK = Uses dithered translucency to improve the look of objects that should be translucent but can't when separateEntityDraws is enabled. 
 
 value.DEBUG_VIEW.DEBUG_VIEW_NONE       = OFF
 value.DEBUG_VIEW.DEBUG_VIEW_SAMPLER    = Sampler
