@@ -89,7 +89,19 @@ vec3 get_wind_displacement(
     wind_strength *= 0.5 + windiness;
 #endif
 
+    // kidofcubes -- loopingsway
+    // todo fix
+#ifdef LOOPING_SWAY
+    float t = wind_speed;
+    if( mod(frameTimeCounter,20.0)>10.0 ){
+        t *= 20.0-mod(frameTimeCounter,20.0);
+    }else{
+        t *= mod(frameTimeCounter,20.0);
+    }
+#else
     float t = wind_speed * frameTimeCounter;
+#endif
+    // end kidofcubes -- loopingsway
 
     float gust_amount =
         texture(noisetex, 0.05 * (world_pos.xz + wind_dir * t)).y;

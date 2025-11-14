@@ -148,6 +148,10 @@ uniform float time_midnight;
 uniform float world_age;
 uniform float eye_skylight;
 
+// kidofcubes -- FULL_BORDER
+uniform float viewWidth, viewHeight, aspectRatio;
+// end kidofcubes -- FULL_BORDER
+
 /*
 const bool colortex5MipmapEnabled = true;
 const bool colortex11MipmapEnabled = true;
@@ -172,10 +176,14 @@ const bool colortex11MipmapEnabled = true;
 #include "/include/surface/edge_highlight.glsl"
 #include "/include/surface/material.glsl"
 #include "/include/surface/rain_puddles.glsl"
+#include "/include/misc/fullBorder.glsl"
 #include "/include/utility/bicubic.glsl"
 #include "/include/utility/color.glsl"
 #include "/include/utility/encoding.glsl"
 #include "/include/utility/space_conversion.glsl"
+
+// kidofcubes -- raindrops
+#include "/include/misc/raindrop.glsl"
 
 #if defined WORLD_OVERWORLD
 #include "/include/sky/clouds/sampling.glsl"
@@ -194,7 +202,15 @@ void main() {
     colortex3_clear = vec4(0.0);
 #endif
 
+    // kidofcubes -- raindrops
+#ifdef RAINDROP_ON_SCREEN
+    vec2 uv = raindropRefraction(uv);
+
+    ivec2 texel = ivec2(uv*view_res);
+#else
     ivec2 texel = ivec2(gl_FragCoord.xy);
+#endif
+    // end kidofcubes -- raindrops
 
     // Sample textures
 
@@ -613,6 +629,11 @@ void main() {
                     depth,
                     material_mask
                 );
+#endif
+
+// kidofcubes -- FULL_BORDER
+#ifdef FULL_BORDER
+        scene_color = fullborder(scene_color, depthtex1, uv, viewWidth, viewHeight, near, far);
 #endif
 
         // Apply fog
