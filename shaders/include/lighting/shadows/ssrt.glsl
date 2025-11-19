@@ -6,13 +6,82 @@
 #include "/include/utility/sampling.glsl"
 #include "/include/utility/space_conversion.glsl"
 
-float linearize_depth_thing(float d,float zNear,float zFar)
-{
-    float z_n = 2.0 * d - 1.0;
-    return 2.0 * zNear * zFar / (zFar + zNear - z_n * (zFar - zNear));
+//llm generated clamping max dist function for increasing density of samples when possible, no idea how well it works
+float get_clamped_max_dist(mat4 proj, vec3 ray_origin_view, vec3 ray_dir_view, float hard_cap) {
+    // 1. Extract Frustum Slopes (tan(FOV / 2)) from the projection matrix
+    // P[0][0] is 1/tan(fov_x/2) -> slope_x = 1 / P[0][0]
+    // We abs() them to ensure we handle standard and inverted matrices correctly
+    float slope_x = 1.0 / abs(proj[0][0]);
+    float slope_y = 1.0 / abs(proj[1][1]);
+
+    float min_t = hard_cap;
+
+    // 2. Define the 4 Side Planes of the View Frustum Pyramid
+    // In View Space (looking down -Z), the planes are defined as:
+    // x = +/- z * slope_x
+    // y = +/- z * slope_y
+    
+    // We iterate 2 axes: X (0) and Y (1)
+    // And 2 sides: Positive (Right/Top) and Negative (Left/Bottom)
+    
+    // Unrolling the loop for clarity and GLSL performance:
+    
+    vec3 O = ray_origin_view;
+    vec3 D = ray_dir_view;
+
+    // --- X Axis (Left/Right) ---
+    // Equation: O.x + t*D.x = - (O.z + t*D.z) * slope * side
+    // Solves to: t = -(O.x + O.z * slope * side) / (D.x + D.z * slope * side)
+    
+    // Right Plane (side = 1.0)
+    {
+        float S = slope_x;
+        float num = -(O.x + O.z * S);
+        float den =   D.x + D.z * S;
+        if (den != 0.0) {
+            float t = num / den;
+            if (t > 0.0) min_t = min(min_t, t);
+        }
+    }
+    // Left Plane (side = -1.0)
+    {
+        float S = -slope_x;
+        float num = -(O.x + O.z * S);
+        float den =   D.x + D.z * S;
+        if (den != 0.0) {
+            float t = num / den;
+            if (t > 0.0) min_t = min(min_t, t);
+        }
+    }
+
+    // --- Y Axis (Top/Bottom) ---
+    
+    // Top Plane (side = 1.0)
+    {
+        float S = slope_y;
+        float num = -(O.y + O.z * S);
+        float den =   D.y + D.z * S;
+        if (den != 0.0) {
+            float t = num / den;
+            if (t > 0.0) min_t = min(min_t, t);
+        }
+    }
+    // Bottom Plane (side = -1.0)
+    {
+        float S = -slope_y;
+        float num = -(O.y + O.z * S);
+        float den =   D.y + D.z * S;
+        if (den != 0.0) {
+            float t = num / den;
+            if (t > 0.0) min_t = min(min_t, t);
+        }
+    }
+
+    return min_t;
 }
 
-bool raymarch_shadow_old(
+
+bool raymarch_shadow(
     sampler2D depth_sampler,
     mat4 projection_matrix,
     mat4 projection_matrix_inverse,
@@ -24,139 +93,27 @@ bool raymarch_shadow_old(
     out float sss_depth
 ) {
     const uint step_count = uint(SHADOW_SSRT_STEPS);
-    // const float step_ratio = 2.0; // geometric sample distribution
-    const float step_ratio = 1.0; // geometric sample distribution
-    const float z_tolerance = 10.0; // assumed thickness in blocks
+    const float step_ratio = 1.05; // geometric sample distribution
+    float max_ray_length_view = float(SHADOW_SSRT_MAX_RANGE);
 
-    vec3 ray_dir_screen = normalize(
-        view_to_screen_space(
-            projection_matrix,
-            ray_origin_view + ray_dir_view,
-            true
-        ) -
-        ray_origin_screen
-    );
-
-    float ray_length = min_of(
-        abs(sign(ray_dir_screen) - ray_origin_screen) /
-        max(abs(ray_dir_screen), eps)
-    );
-    ray_length =
-        min(ray_length,
-            max(0.1, exp(-max0(length(ray_origin_view) * 0.025 - 1.0))));
-
-    const float initial_step_scale = step_ratio == 1.0
-        ? rcp(float(step_count))
-        : (step_ratio - 1.0) / (pow(step_ratio, float(step_count)) - 1.0);
-    float step_length = ray_length * initial_step_scale;
-
-    vec3 ray_pos = ray_origin_screen + length(view_pixel_size) * ray_dir_screen;
-
-    bool hit = false;
-    bool hit_after_sss = false;
-    bool sss_raymarch = has_sss;
-    vec3 exit_pos = ray_origin_view;
-
-    for (int i = 0; i < step_count; ++i) {
-        step_length *= step_ratio;
-        vec3 ray_step = ray_dir_screen * step_length;
-        vec3 dithered_pos = ray_pos + dither * ray_step;
-        ray_pos += ray_step;
-
-#ifdef LOD_MOD_ACTIVE
-        // if (dithered_pos.z < 0.0) {
-        //     continue;
-        // }
+#ifndef SHADOW_SSRT_LOCKED
+    max_ray_length_view = get_clamped_max_dist(projection_matrix, ray_origin_view, ray_dir_view, 1000.0);
 #endif
-        // if (clamp01(dithered_pos) != dithered_pos) {
-        //     break;
-        // }
 
-        // float depth = texelFetch(
-        //                   depth_sampler,
-        //                   ivec2(dithered_pos.xy * view_res * taau_render_scale),
-        //                   0
-        // )
-        float depth = texture(
-                          depth_sampler,
-                          vec2(dithered_pos.xy * view_res * taau_render_scale)
-        )
-                          .x;
 
-        float z_ray = screen_to_view_space_depth(
-            projection_matrix_inverse,
-            dithered_pos.z
-        );
-        float z_sample =
-            screen_to_view_space_depth(projection_matrix_inverse, depth);
-
-        // bool inside = depth != 0.0 && depth < dithered_pos.z &&
-        //     abs(z_tolerance - (z_ray - z_sample)) < z_tolerance;
-        bool inside = depth != 0.0 && (dithered_pos.z-depth) < 1000.0  &&
-            // abs(z_tolerance - (z_ray - z_sample)) < z_tolerance;
-            (z_ray - z_sample) > -10.0;
-        hit = inside || hit;
-
-        if (sss_raymarch) {
-            if (!inside) {
-                exit_pos = dithered_pos;
-                sss_raymarch = false;
-            }
-        }
-
-        else if (!sss_raymarch) {
-            // hit_after_sss = inside || hit_after_sss;
-            if (hit) {
-                break;
-            }
-        }
-    }
-
-    exit_pos = screen_to_view_space(projection_matrix_inverse, exit_pos, true);
-    sss_depth =
-        hit_after_sss ? -1.0 : max0(distance(ray_origin_view, exit_pos) * 0.2);
-
-    return hit;
-}
-//chatgpt spat this out, i have not checked what it does yet
-bool raymarch_shadow(
-    sampler2D depth_sampler,
-    mat4 projection_matrix,
-    mat4 projection_matrix_inverse,
-    vec3 ray_origin_screen,   // screen space origin (uv.z = linear/clip depth?)
-    vec3 ray_origin_view,     // view-space origin
-    vec3 ray_dir_view,        // normalized view-space direction
-    bool has_sss,
-    float dither,
-    out float sss_depth
-) {
-    const int step_count = int(SHADOW_SSRT_STEPS);
-    const float step_ratio = 1.05; // >=1: 1.0 = uniform steps, >1 geometric
-    const float min_step = 0.02;   // minimum step length in view-space units
-    // const float max_distance = 100.0; // clamp ray length in view-space
-    const float max_distance = 1000.0; // clamp ray length in view-space
-
-    // Pre-normalize ray dir in view-space
-    vec3 ray_dir_v = normalize(ray_dir_view);
-    float start_dist = 0.0;
-
-    // Compute a safe ray travel distance (in view space). You had a complicated ray_length;
-    // a conservative clamp avoids marching enormous ranges that kill precision.
-    float ray_length_view = clamp(max_distance, 0.0, max_distance);
-
-    // geometric stepping initial scale (handles step_ratio ~= 1 safely)
-    float initial_step;
+    float initial_step_length;
+    // step_length * (geometric sum of step_ratio) = max_ray_length_view
+    // with catch case for small small ratios
     if (abs(step_ratio - 1.0) < 1e-6) {
-        initial_step = ray_length_view / float(step_count);
+        initial_step_length = max_ray_length_view / float(step_count);
     } else {
-        // sum of GP: step * (r^n - 1)/(r - 1) = ray_length_view  => step = ...
-        initial_step = ray_length_view * (step_ratio - 1.0) / (pow(step_ratio, float(step_count)) - 1.0);
+        initial_step_length = max_ray_length_view * (step_ratio - 1.0) / (pow(step_ratio, float(step_count)) - 1.0);
     }
-    float step_length = max(initial_step, min_step);
+    float step_length = max(initial_step_length,0.02);
 
-    // start ray position a small offset to avoid self-hit (in view space)
-    float cur_dist = start_dist + length(view_pixel_size) * 0.5; // keep your pixel offset idea but in view-space
-    vec3 cur_pos_view = ray_origin_view + ray_dir_v * cur_dist;
+    vec3 current_ray_pos_view = ray_origin_view + 
+        (normalize(ray_dir_view) * (length(view_pixel_size)*0.5));
+
 
     bool hit = false;
     bool hit_after_sss = false;
@@ -164,58 +121,52 @@ bool raymarch_shadow(
     vec3 exit_pos_view = ray_origin_view;
 
     for (int i = 0; i < step_count; ++i) {
-        // ---- march in view space using step_length ----
-        vec3 step_v = ray_dir_v * step_length;
-        // optionally add a tiny per-sample jitter to reduce banding
-        cur_pos_view += step_v * (1.0 + dither * (fract(sin(float(i) * 12.9898) * 43758.5453) - 0.5));
-        cur_dist += step_length;
+        vec3 ray_step = ray_dir_view * step_length;
+        vec3 dithered_pos_view = current_ray_pos_view + (dither * ray_step);
+        current_ray_pos_view += ray_step;
 
-        // project current view-space point to screen (NDC -> uv)
-        vec4 clip = projection_matrix * vec4(cur_pos_view, 1.0);
+        // project view point onto screen for fetching depth
+        vec4 clip = projection_matrix * vec4(current_ray_pos_view, 1.0);
         // avoid division by zero
         if (abs(clip.w) < 1e-6) { break; }
         vec3 ndc = clip.xyz / clip.w;            // -1..1 (GL) or adjust for DX Y range
         vec2 uv = ndc.xy * 0.5 + 0.5;            // 0..1
-        float proj_depth = ndc.z * 0.5 + 0.5;   // depends on your depth range; convert to 0..1
 
-        // break if outside screen
+
         if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
             break;
         }
 
-        // sample depth using bilinear filtering (texture) to avoid coarse texel jumps
-        float sceneDepth = texture(depth_sampler, uv).x;
-        // convert sampled depth (0..1) to view-space z (same space as cur_pos_view.z)
-        float z_ray = -cur_pos_view.z; // assuming camera looks down -Z in view space; adapt if different
-        float z_sample = screen_to_view_space_depth(projection_matrix_inverse, sceneDepth);
+        //i'm using texelFetch here because i feel like it
+        float depth_screen = texelFetch(depth_sampler, ivec2(uv * view_res * taau_render_scale),0).x;
+        // float depth_screen = texture(depth_sampler, vec2(uv*taau_render_scale)).x;
 
-        // thickness (tolerance) in view-space units - scale with distance
-        float thickness = max(0.02, z_ray * 0.01);
+        float z_ray_view = -current_ray_pos_view.z;
+        float z_sample_view = screen_to_view_space_depth(projection_matrix_inverse, depth_screen);
 
-        // hit test: sample must be valid and closer than the ray point within tolerance
-        bool inside = (sceneDepth > 0.0) && (z_sample + thickness <= z_ray);
+        bool inside = (depth_screen > 0.0) &&
+            z_sample_view + (max(0.02, z_ray_view * 0.01)) <= z_ray_view;
+        hit = inside || hit;
 
         if (sss_raymarch) {
             if (!inside) {
-                // we are exiting the scattering volume; store exit
-                exit_pos_view = cur_pos_view;
+                exit_pos_view = dithered_pos_view;
+                // exit_pos_view = current_ray_pos_view;
                 sss_raymarch = false;
             }
-        } else {
-            if (inside) {
+        }else if (!sss_raymarch) {
+            if(inside){
+                hit_after_sss = true;
                 hit = true;
-                // We can do a small binary-search refinement here if you want.
                 break;
             }
         }
-
-        // advance step size for geometric progression (multiply AFTER use)
         step_length *= step_ratio;
-        // safety: clamp step_length
-        step_length = clamp(step_length, min_step, 2.0 * initial_step);
+        step_length = clamp(step_length, 0.02, initial_step_length * 2.0);
     }
 
-    sss_depth = hit_after_sss ? -1.0 : max(0.0, distance(ray_origin_view, exit_pos_view) * 0.2);
+    sss_depth = hit_after_sss ? -1.0 : max0(distance(ray_origin_view, exit_pos_view) * 0.2);
+
     return hit;
 }
 
@@ -233,22 +184,21 @@ float get_screen_space_shadows(
     // Dithering for ray offset
     float dither = texelFetch(noisetex, ivec2(gl_FragCoord.xy) & 511, 0).b;
     dither = r1(frameCounter, dither);
-    dither = 0.0;
 
     // Slightly randomise ray direction to create soft shadows
     vec2 hash = hash2(gl_FragCoord.xy);
     vec3 ray_dir =
         normalize(view_light_dir + 0.03 * uniform_sphere_sample(hash));
-        normalize(view_light_dir);
 
 #ifdef LOD_MOD_ACTIVE
     // Which depth map to raymarch depends on distance
     // Closer fragments: use combined depth texture (so MC terrain can cast)
     // Further fragments: use LoD depth texture (maximise precision)
 
-    bool raymarch_combined_depth = length_squared(position_view) <
-        // sqr(far + 64.0); // heuristic of 4 chunks overlap
-        sqr(far + 0.0); // heuristic of 4 chunks overlap
+    vec3 scene_pos = view_to_scene_space(position_view);
+    scene_pos.y = 0.0;
+    bool raymarch_combined_depth = length_squared(scene_to_view_space(scene_pos)) <
+        sqr(far + 64.0); // heuristic of 4 chunks overlap
     bool hit;
 
     /*

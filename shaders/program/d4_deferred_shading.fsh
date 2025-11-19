@@ -633,7 +633,7 @@ void main() {
 
 // kidofcubes -- FULL_BORDER
 #ifdef FULL_BORDER
-        scene_color = fullborder(scene_color, depthtex1, uv, viewWidth, viewHeight, near, far);
+        fragment_color = fullborder(fragment_color, depthtex1, uv, viewWidth, viewHeight, near, far);
 #endif
 
         // Apply fog

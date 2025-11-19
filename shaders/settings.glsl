@@ -120,7 +120,7 @@ const float shadowFarPlane          = 2048.0;
 
   #define SHADOW
   #define SHADOW_SSRT
-  #define SHADOW_SSRT_STEPS 10 // [4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24]
+  #define SHADOW_SSRT_STEPS 10 // [4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 32 34 36 38 40 42 44 46 48 50 52 56 60 64 68 72 76 80 84 88 92 96 100 105 110 125 128]
   #define SHADOW_PCF
   #define SHADOW_COLOR
   #define SHADOW_VPS
@@ -137,6 +137,9 @@ const float shadowFarPlane          = 2048.0;
   #define SHADOW_BLOCKER_SEARCH_RADIUS 0.5 // [0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0]
 
   // kidofcubes -- shadowsettings
+//#define SHADOW_SSRT_LOCKED
+  #define SHADOW_SSRT_MAX_RANGE 640 // [32 48 64 96 128 160 192 256 320 384 448 512 640 768 896 1024 2048 4096]
+
   #define SHADOW_BLOCKER_SEARCH_STEPS    6 // [3 6 9 12 15]
 
   #define SHADOW_DEPTH_SCALE 0.2 // [0.01 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4]
