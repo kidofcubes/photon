@@ -110,11 +110,21 @@ void main() {
     float biased_abs     = min(biased_abs_raw, max_coc_side);
     float biased_coc     = sign(signed_coc) * biased_abs;
 
-    // ----- Kernel radius -----
+    // ----- Transition ramps & kernel radius -----
+    // DOF_FOCUS_TRANSITION / DOF_NEAR_FOCUS_TRANSITION control how quickly blur SIZE
+    // grows from the zone boundary.  Alpha is binary past the zone — the ramp is on
+    // the kernel, not the blend strength.
+    float far_ramp  = float(DOF_FOCUS_TRANSITION)      * view_pixel_size.x;
+    float near_ramp = float(DOF_NEAR_FOCUS_TRANSITION) * view_pixel_size.x;
+
+    float side_ramp  = signed_coc >= 0.0 ? far_ramp : near_ramp;
+    float ramp_t     = clamp(biased_abs / max(side_ramp, 1e-6), 0.0, 1.0);
+    float ramped_abs = biased_abs * ramp_t;  // grows from 0 at zone boundary, full size after ramp
+
     // Minimum kernel ensures in-focus pixels still sample neighbors for
     // near-field bleeding detection (~3px footprint)
     float min_kernel = 3.0 * view_pixel_size.x;
-    float kernel     = max(biased_abs, min_kernel);
+    float kernel     = max(ramped_abs, min_kernel);
     vec2  kernel_uv  = vec2(kernel, kernel * aspectRatio);
 
     // ----- Temporal Vogel disc rotation -----
@@ -128,8 +138,6 @@ void main() {
     vec3  near_accum   = vec3(0.0);
     float near_w       = 0.0;
     float near_coverage = 0.0;
-
-    float near_ramp = float(DOF_NEAR_FOCUS_TRANSITION) * view_pixel_size.x;
 
     vec2 uv_max = vec2(1.0) - 2.0 * view_pixel_size * rcp(taau_render_scale);
 
@@ -174,16 +182,16 @@ void main() {
 
     // ----- Alpha computation -----
 
-    // Far alpha: ramp from 0 at zone boundary to 1 over DOF_FOCUS_TRANSITION pixels of CoC
-    float far_ramp  = float(DOF_FOCUS_TRANSITION) * view_pixel_size.x;
-    float far_alpha = clamp(max(0.0, biased_coc) / far_ramp, 0.0, 1.0);
+    // Alpha is binary past the focus zone — blur SIZE (kernel) does the transition, not blend strength.
+    // Far: 1.0 once any far-field CoC exists
+    float far_alpha = biased_coc > 0.0 ? 1.0 : 0.0;
 
-    // Near alpha: take the larger of:
-    //   - Fraction of samples that were near-field (bleeding from neighbors)
-    //   - Center pixel's own near CoC, ramped over DOF_NEAR_FOCUS_TRANSITION pixels
-    float near_cov_frac  = near_coverage / float(DOF_SAMPLES);
-    float center_near    = clamp(max(0.0, -biased_coc) / near_ramp, 0.0, 1.0);
-    float near_alpha     = clamp(max(near_cov_frac, center_near), 0.0, 1.0);
+    // Near: take the larger of coverage fraction (bleeding) and own near CoC (binary).
+    // near_coverage is already weighted by near_ramp in the loop, so the bleeding
+    // transition is still governed by DOF_NEAR_FOCUS_TRANSITION.
+    float near_cov_frac = near_coverage / float(DOF_SAMPLES);
+    float center_near   = biased_coc < 0.0 ? 1.0 : 0.0;
+    float near_alpha    = clamp(max(near_cov_frac, center_near), 0.0, 1.0);
 
     // ----- Write outputs -----
 
