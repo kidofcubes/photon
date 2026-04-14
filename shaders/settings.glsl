@@ -484,7 +484,8 @@ const float shadowFarPlane          = 2048.0;
   #define DOF_FOCUS -1.0 // [0.0 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0 11.0 12.0 13.0 14.0 15.0 16.0 17.0 18.0 19.0 20.0 21.0 22.0 23.0 24.0 25.0 26.0 27.0 28.0 29.0 30.0 31.0 32.0 33.0 34.0 35.0 36.0 37.0 38.0 39.0 40.0 41.0 42.0 43.0 44.0 45.0 46.0 47.0 48.0 49.0 50.0]
   #define DOF_FAR_BLUR             // Blur objects behind the focus plane
   #define DOF_NEAR_BLUR            // Blur objects in front of the focus plane (bleeds over background)
-  #define DOF_MAX_COC 50           // [1 5 10 15 20 25 30 40 50 60 75 100 150 200 250 300] Maximum bokeh radius in pixels
+  #define DOF_MAX_COC 50           // [1 5 10 15 20 25 30 40 50 60 75 100 150 200 250 300] Far field maximum bokeh radius in pixels
+  #define DOF_NEAR_MAX_COC 50      // [1 5 10 15 20 25 30 40 50 60 75 100 150 200 250 300] Near field maximum bokeh radius in pixels
   #define DOF_FOCUS_ZONE 0         // [0 1 2 3 4 5 6 8 10 12 15 20 25 30 40 50 60 75 90 105 130 155 180 205 235 265 300] Sharp zone radius in pixels of CoC — objects within this blur radius of the focus plane stay fully sharp
   #define DOF_FOCUS_TRANSITION 20       // [1 2 3 4 5 6 8 10 12 15 20 25 30 40 50 75 100 125 150 175 200 225 250 275 300] Far field: pixels of CoC over which blur ramps from 0 to full after the sharp zone
   #define DOF_NEAR_FOCUS_TRANSITION 20  // [1 2 3 4 5 6 8 10 12 15 20 25 30 40 50 75 100 125 150 175 200 225 250 275 300] Near field: pixels of CoC over which blur ramps from 0 to full after the sharp zone

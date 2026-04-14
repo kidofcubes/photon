@@ -95,8 +95,11 @@ void main() {
     float coc_scale  = DOF_INTENSITY * 0.00002 / 1.37 * gbufferProjection[1][1];
     float signed_coc = (pixel_view - focus_view) * coc_scale;
 
-    // Clamp to maximum bokeh radius (prevents absurdly large kernels)
-    float max_coc_uv = float(DOF_MAX_COC) * view_pixel_size.x;
+    // Clamp near and far sides to their respective maximum bokeh radii.
+    // This must happen before biased_abs so the kernel radius is also capped.
+    float far_max_coc_uv  = float(DOF_MAX_COC)      * view_pixel_size.x;
+    float near_max_coc_uv = float(DOF_NEAR_MAX_COC) * view_pixel_size.x;
+    signed_coc = clamp(signed_coc, -near_max_coc_uv, far_max_coc_uv);
 
     // ----- Focus zone -----
     // Subtract the sharp-zone radius so objects within DOF_FOCUS_ZONE pixels of
@@ -105,7 +108,6 @@ void main() {
     float focus_zone_uv = float(DOF_FOCUS_ZONE) * view_pixel_size.x;
     float biased_abs    = max(0.0, abs(signed_coc) - focus_zone_uv);
     float biased_coc    = sign(signed_coc) * biased_abs;
-    biased_coc = clamp(biased_coc, -max_coc_uv, max_coc_uv);
 
     // ----- Kernel radius -----
     // Minimum kernel ensures in-focus pixels still sample neighbors for
@@ -144,11 +146,11 @@ void main() {
 
         float sample_view = screen_to_view_space_depth(gbufferProjectionInverse, sample_depth);
         float sample_coc  = (sample_view - focus_view) * coc_scale;
+        sample_coc = clamp(sample_coc, -near_max_coc_uv, far_max_coc_uv);
 
         // Apply focus zone to sample CoC so in-zone samples don't contribute
         // to far/near accumulators
         float s_biased = sign(sample_coc) * max(0.0, abs(sample_coc) - focus_zone_uv);
-        s_biased = clamp(s_biased, -max_coc_uv, max_coc_uv);
 
         // Far contribution (sample is behind focus)
         float w_far = max(0.0, s_biased);
