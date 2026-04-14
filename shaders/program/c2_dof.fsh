@@ -77,7 +77,14 @@ void main() {
     float focus = DOF_FOCUS < 0.0
         ? centerDepthSmooth
         : view_to_screen_space_depth(gbufferProjection, DOF_FOCUS);
-    vec2 CoC = min(abs(depth - focus), 0.1) * (DOF_INTENSITY * 0.2 / 1.37) *
+    // vec2 CoC = min(abs(depth - focus), 0.1) * (DOF_INTENSITY * 0.2 / 1.37) *
+    //     vec2(1.0, aspectRatio) * gbufferProjection[1][1];
+
+    // vec2 CoC = min(abs(view_to_screen_space_depth(gbufferProjection, depth) - view_to_screen_space_depth(gbufferProjection,focus)), 0.1) * (DOF_INTENSITY * 0.2 / 1.37) *
+    // vec2 CoC = min(abs(view_to_screen_space_depth(gbufferProjection, depth) - view_to_screen_space_depth(gbufferProjection,focus)), 100000.0) * (DOF_INTENSITY * 0.2 / 1.37) *
+    // vec2 CoC = min(abs(view_to_screen_space_depth(gbufferProjection, depth) - view_to_screen_space_depth(gbufferProjection,focus)), 100000.0) * (DOF_INTENSITY * 200.0 / 1.37) *
+    // vec2 CoC = min(max(-(view_to_screen_space_depth(gbufferProjection, depth) - view_to_screen_space_depth(gbufferProjection,focus)), 0), 100000.0) * (DOF_INTENSITY * 200.0 / 1.37) *
+    vec2 CoC = abs(screen_to_view_space_depth(gbufferProjectionInverse, depth) - screen_to_view_space_depth(gbufferProjectionInverse,focus)) * (DOF_INTENSITY * 0.00002 / 1.37) *
         vec2(1.0, aspectRatio) * gbufferProjection[1][1];
 
     scene_color = vec3(0.0);
