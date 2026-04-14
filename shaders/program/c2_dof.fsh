@@ -129,9 +129,7 @@ void main() {
     float near_w       = 0.0;
     float near_coverage = 0.0;
 
-    // Near-field threshold: sample CoC must be negative by at least this much
-    // to count as a near-field pixel for coverage/bleeding purposes
-    float near_threshold = -0.5 * min_kernel;
+    float near_ramp = float(DOF_NEAR_FOCUS_TRANSITION) * view_pixel_size.x;
 
     vec2 uv_max = vec2(1.0) - 2.0 * view_pixel_size * rcp(taau_render_scale);
 
@@ -163,10 +161,10 @@ void main() {
         near_accum += sample_color * w_near;
         near_w     += w_near;
 
-        // Count samples that are meaningfully near-field for bleed alpha
-        if (s_biased < near_threshold) {
-            near_coverage += 1.0;
-        }
+        // Accumulate near coverage weighted by depth into near-field, normalized
+        // by near_ramp — so DOF_NEAR_FOCUS_TRANSITION controls how quickly coverage
+        // builds up as well as the center-pixel ramp.
+        near_coverage += clamp(max(0.0, -s_biased) / near_ramp, 0.0, 1.0);
     }
 
     // ----- Normalize -----
@@ -183,7 +181,6 @@ void main() {
     // Near alpha: take the larger of:
     //   - Fraction of samples that were near-field (bleeding from neighbors)
     //   - Center pixel's own near CoC, ramped over DOF_NEAR_FOCUS_TRANSITION pixels
-    float near_ramp      = float(DOF_NEAR_FOCUS_TRANSITION) * view_pixel_size.x;
     float near_cov_frac  = near_coverage / float(DOF_SAMPLES);
     float center_near    = clamp(max(0.0, -biased_coc) / near_ramp, 0.0, 1.0);
     float near_alpha     = clamp(max(near_cov_frac, center_near), 0.0, 1.0);
