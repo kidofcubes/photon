@@ -1,4 +1,5 @@
 #version 400 compatibility
 #define WORLD_OVERWORLD
+#define BLOOM_TILE_INDEX 5
 #define vsh
-#include "/program/c11_bloom_merge_buffers.vsh"
+#include "/program/c5_c10_bloom_downsample.vsh"
