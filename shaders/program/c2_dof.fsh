@@ -99,11 +99,19 @@ void main() {
     float max_coc_uv = float(DOF_MAX_COC) * view_pixel_size.x;
     signed_coc = clamp(signed_coc, -max_coc_uv, max_coc_uv);
 
+    // ----- Focus zone -----
+    // Subtract the sharp-zone radius so objects within DOF_FOCUS_ZONE pixels of
+    // CoC stay fully sharp.  The biased CoC drives kernel radius, alpha, and
+    // sample weights — raw signed_coc is not used further after this point.
+    float focus_zone_uv = float(DOF_FOCUS_ZONE) * view_pixel_size.x;
+    float biased_abs    = max(0.0, abs(signed_coc) - focus_zone_uv);
+    float biased_coc    = sign(signed_coc) * biased_abs;
+
     // ----- Kernel radius -----
     // Minimum kernel ensures in-focus pixels still sample neighbors for
     // near-field bleeding detection (~3px footprint)
     float min_kernel = 3.0 * view_pixel_size.x;
-    float kernel     = max(abs(signed_coc), min_kernel);
+    float kernel     = max(biased_abs, min_kernel);
     vec2  kernel_uv  = vec2(kernel, kernel * aspectRatio);
 
     // ----- Temporal Vogel disc rotation -----
@@ -138,18 +146,22 @@ void main() {
         float sample_coc  = (sample_view - focus_view) * coc_scale;
         sample_coc = clamp(sample_coc, -max_coc_uv, max_coc_uv);
 
+        // Apply focus zone to sample CoC so in-zone samples don't contribute
+        // to far/near accumulators
+        float s_biased = sign(sample_coc) * max(0.0, abs(sample_coc) - focus_zone_uv);
+
         // Far contribution (sample is behind focus)
-        float w_far = max(0.0, sample_coc);
+        float w_far = max(0.0, s_biased);
         far_accum += sample_color * w_far;
         far_w     += w_far;
 
         // Near contribution (sample is in front of focus)
-        float w_near = max(0.0, -sample_coc);
+        float w_near = max(0.0, -s_biased);
         near_accum += sample_color * w_near;
         near_w     += w_near;
 
         // Count samples that are meaningfully near-field for bleed alpha
-        if (sample_coc < near_threshold) {
+        if (s_biased < near_threshold) {
             near_coverage += 1.0;
         }
     }
@@ -161,15 +173,15 @@ void main() {
 
     // ----- Alpha computation -----
 
-    // Far alpha: ramp from 0 at focus to 1 over ~5 pixels
+    // Far alpha: ramp from 0 at zone boundary to 1 over ~5 pixels
     float alpha_ramp = 5.0 * view_pixel_size.x;
-    float far_alpha  = clamp(max(0.0, signed_coc) / alpha_ramp, 0.0, 1.0);
+    float far_alpha  = clamp(max(0.0, biased_coc) / alpha_ramp, 0.0, 1.0);
 
     // Near alpha: take the larger of:
     //   - Fraction of samples that were near-field (bleeding from neighbors)
-    //   - Center pixel's own near CoC (pixel itself is in front of focus)
+    //   - Center pixel's own near CoC (pixel itself is in front of focus zone)
     float near_cov_frac  = near_coverage / float(DOF_SAMPLES);
-    float center_near    = clamp(max(0.0, -signed_coc) / alpha_ramp, 0.0, 1.0);
+    float center_near    = clamp(max(0.0, -biased_coc) / alpha_ramp, 0.0, 1.0);
     float near_alpha     = clamp(max(near_cov_frac, center_near), 0.0, 1.0);
 
     // ----- Write outputs -----
