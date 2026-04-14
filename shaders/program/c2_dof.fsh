@@ -124,7 +124,8 @@ void main() {
     // Minimum kernel ensures in-focus pixels still sample neighbors for
     // near-field bleeding detection (~3px footprint)
     float min_kernel = 3.0 * view_pixel_size.x;
-    float kernel     = max(ramped_abs, min_kernel);
+    // float kernel     = max(ramped_abs, min_kernel);
+    float kernel     = ramped_abs;
     vec2  kernel_uv  = vec2(kernel, kernel * aspectRatio);
 
     // ----- Temporal Vogel disc rotation -----
