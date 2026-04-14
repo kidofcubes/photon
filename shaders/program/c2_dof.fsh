@@ -173,8 +173,8 @@ void main() {
 
     // ----- Alpha computation -----
 
-    // Far alpha: ramp from 0 at zone boundary to 1 over ~5 pixels
-    float alpha_ramp = 5.0 * view_pixel_size.x;
+    // Far alpha: ramp from 0 at zone boundary to 1 over DOF_FOCUS_TRANSITION pixels of CoC
+    float alpha_ramp = float(DOF_FOCUS_TRANSITION) * view_pixel_size.x;
     float far_alpha  = clamp(max(0.0, biased_coc) / alpha_ramp, 0.0, 1.0);
 
     // Near alpha: take the larger of:
