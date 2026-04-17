@@ -139,6 +139,9 @@ uniform float time_midnight;
 #include "/include/utility/fast_math.glsl"
 #include "/include/utility/space_conversion.glsl"
 
+// kidofcubes -- orthogonal support
+#include "/include/misc/orthogonal_support.glsl"
+
 #ifdef WORLD_OVERWORLD
 #include "/include/fog/overworld/analytic.glsl"
 #include "/include/sky/clouds/sampling.glsl"
@@ -286,6 +289,12 @@ void main() {
         direction_world,
         view_distance
     );
+    // kidofcubes -- orthogonal support
+    if(isOrthogonalProjection){
+        direction_world 
+            = normalize((gbufferModelViewInverse*vec4(0.0,0.0,-1.0,0.0)).xyz);
+    }
+    // end kidofcubes -- orthogonal support
 
     // Refraction
 

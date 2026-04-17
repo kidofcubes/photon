@@ -160,6 +160,9 @@ uniform vec4 entityColor;
 #include "/include/utility/fast_math.glsl"
 #include "/include/utility/space_conversion.glsl"
 
+// kidofcubes -- orthogonal support
+#include "/include/misc/orthogonal_support.glsl"
+
 #ifdef CLOUD_SHADOWS
 #include "/include/lighting/cloud_shadows.glsl"
 #endif
@@ -226,6 +229,13 @@ void main() {
 
     vec3 world_pos = scene_pos + cameraPosition;
     vec3 world_dir = normalize(scene_pos - gbufferModelViewInverse[3].xyz);
+    // kidofcubes -- orthogonal support
+    if(isOrthogonalProjection){
+        direction_world 
+            = normalize((gbufferModelViewInverse*vec4(0.0,0.0,-1.0,0.0)).xyz);
+    }
+    // end kidofcubes -- orthogonal support
+
 
     vec3 view_back_pos = back_is_dh_terrain
         ? screen_to_view_space(vec3(coord, back_depth_dh), true, true)

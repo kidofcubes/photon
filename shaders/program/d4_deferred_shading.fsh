@@ -185,6 +185,9 @@ const bool colortex11MipmapEnabled = true;
 // kidofcubes -- raindrops
 #include "/include/misc/raindrop.glsl"
 
+// kidofcubes -- orthogonal support
+#include "/include/misc/orthogonal_support.glsl"
+
 #if defined WORLD_OVERWORLD
 #include "/include/sky/clouds/sampling.glsl"
 #include "/include/sky/rainbow.glsl"
@@ -248,6 +251,12 @@ void main() {
     vec3 position_world = position_scene + cameraPosition;
     vec3 direction_world
         = normalize(position_scene - gbufferModelViewInverse[3].xyz);
+    // kidofcubes -- orthogonal support
+    if(isOrthogonalProjection){
+        direction_world 
+            = normalize((gbufferModelViewInverse*vec4(0.0,0.0,-1.0,0.0)).xyz);
+    }
+    // end kidofcubes -- orthogonal support
 
 #if defined WORLD_OVERWORLD
     // Atmosphere

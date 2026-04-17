@@ -113,6 +113,9 @@ uniform vec4 entityColor;
 #include "/include/utility/random.glsl"
 #include "/include/utility/space_conversion.glsl"
 
+// kidofcubes -- orthogonal support
+#include "/include/misc/orthogonal_support.glsl"
+
 #if defined PROGRAM_GBUFFERS_TERRAIN && defined POM
 #define read_tex(x) textureGrad(x, parallax_uv, uv_gradient[0], uv_gradient[1])
 #else
@@ -155,6 +158,12 @@ vec3 draw_end_portal() {
 
     vec3 world_pos = scene_pos + cameraPosition;
     vec3 world_dir = normalize(scene_pos - gbufferModelViewInverse[3].xyz);
+    // kidofcubes -- orthogonal support
+    if(isOrthogonalProjection){
+        world_dir
+            = normalize((gbufferModelViewInverse*vec4(0.0,0.0,-1.0,0.0)).xyz);
+    }
+    // end kidofcubes -- orthogonal support
 
     // Get tangent-space position/direction without tangent/bitangent
 
