@@ -40,8 +40,11 @@ void main() {
     float near_alpha   = near_data.a;
 
     // Composite: far layer first (background), near layer on top (foreground bleeding)
-    vec3 result = mix(original,  far_blurred,  far_alpha);
+    vec3 result = original;
+    result = mix(result,  far_blurred,  far_alpha);
     result      = mix(result,    near_blurred, near_alpha);
+    // result      = mix(result,    vec3(0.0,0.0,0.0), near_alpha);
+    // result      = mix(result,    vec3(0.0,10.0,0.0), near_alpha);
 
     scene_color = result;
 }

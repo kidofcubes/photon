@@ -173,7 +173,7 @@ void main() {
         // Accumulate near coverage weighted by depth into near-field, normalized
         // by near_ramp — so DOF_NEAR_FOCUS_TRANSITION controls how quickly coverage
         // builds up as well as the center-pixel ramp.
-        near_coverage += clamp(max(0.0, -s_biased) / near_ramp, 0.0, 1.0);
+        near_coverage += clamp(w_near / near_ramp, 0.0, 1.0);
     }
 
     // ----- Normalize -----
