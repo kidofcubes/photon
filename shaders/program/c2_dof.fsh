@@ -54,6 +54,7 @@ uniform vec2 view_pixel_size;
 #include "/include/utility/random.glsl"
 #include "/include/utility/sampling.glsl"
 #include "/include/utility/space_conversion.glsl"
+#include "/include/misc/orthogonal_support.glsl"
 
 void main() {
     ivec2 texel = ivec2(gl_FragCoord.xy);
@@ -93,6 +94,9 @@ void main() {
     // Negative  = in front of focus (near field)
     // Units: UV-space radius (same scaling as the existing single-pass formula)
     float coc_scale  = DOF_INTENSITY * 0.00002 / 1.37 * gbufferProjection[1][1];
+    if(isOrthogonalProjection){
+        coc_scale  = DOF_INTENSITY * 0.002 / 1.37 * gbufferProjection[1][1];
+    }
     float signed_coc = (pixel_view - focus_view) * coc_scale;
 
     float far_max_coc_uv  = float(DOF_MAX_COC)      * view_pixel_size.x;
@@ -126,6 +130,7 @@ void main() {
     float min_kernel = 3.0 * view_pixel_size.x;
     // float kernel     = max(ramped_abs, min_kernel);
     float kernel     = ramped_abs;
+    // float kernel = max(ramped_abs, near_max_coc_uv); // ensure bleeding is always detectable
     vec2  kernel_uv  = vec2(kernel, kernel * aspectRatio);
 
     // ----- Temporal Vogel disc rotation -----
@@ -173,7 +178,12 @@ void main() {
         // Accumulate near coverage weighted by depth into near-field, normalized
         // by near_ramp — so DOF_NEAR_FOCUS_TRANSITION controls how quickly coverage
         // builds up as well as the center-pixel ramp.
-        near_coverage += clamp(w_near / near_ramp, 0.0, 1.0);
+        // near_coverage += clamp(w_near / near_ramp, 0.0, 1.0);
+        // near_coverage += clamp(w_near, 0.0, 1.0);
+        near_coverage += w_near > 0.0 ? 1.0 : 0.0;
+        // Ramp coverage by sample's near CoC depth, normalized to [0,1] over near_max range
+        // float near_depth_t = clamp(w_near / near_max_coc_uv, 0.0, 1.0);
+        // near_coverage += near_depth_t;
     }
 
     // ----- Normalize -----
@@ -191,6 +201,7 @@ void main() {
     // near_coverage is already weighted by near_ramp in the loop, so the bleeding
     // transition is still governed by DOF_NEAR_FOCUS_TRANSITION.
     float near_cov_frac = near_coverage / float(DOF_SAMPLES);
+    // near_cov_frac = clamp(near_cov_frac / clamp(near_ramp / near_max_coc_uv, 1e-4, 1.0), 0.0, 1.0);
     float center_near   = biased_coc < 0.0 ? 1.0 : 0.0;
     float near_alpha    = clamp(max(near_cov_frac, center_near), 0.0, 1.0);
 
