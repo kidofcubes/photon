@@ -47,6 +47,8 @@ uniform vec2 taa_offset;
 #include "/include/utility/sampling.glsl"
 #include "/include/utility/space_conversion.glsl"
 
+// #include "/include/misc/screenshot_features_overrides.glsl"
+
 void main() {
     ivec2 texel = ivec2(gl_FragCoord.xy);
 

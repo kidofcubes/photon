@@ -3,6 +3,7 @@
 
 #include "/include/utility/fast_math.glsl"
 #include "/include/utility/random.glsl"
+#include "/include/misc/screenshot_features_overrides.glsl"
 
 uniform float day_factor;
 
@@ -13,7 +14,7 @@ struct Weather {
 };
 
 float weather_temperature() {
-    const float temperature_variation_speed = 0.37 * golden_ratio * rcp(600.0)
+    float temperature_variation_speed = 0.37 * golden_ratio * rcp(600.0)
         * WEATHER_TEMPERATURE_VARIATION_SPEED;
     const float random_temperature_min = 0.0;
     const float random_temperature_max = 1.0;
@@ -48,7 +49,7 @@ float weather_temperature() {
 }
 
 float weather_humidity() {
-    const float humidity_variation_speed
+    float humidity_variation_speed
         = 0.37 * golden_ratio * rcp(600.0) * WEATHER_HUMIDITY_VARIATION_SPEED;
     const float random_humidity_min = 0.2;
     const float random_humidity_max = 0.8;
@@ -82,7 +83,7 @@ float weather_humidity() {
 }
 
 float weather_wind() {
-    const float wind_variation_speed
+    float wind_variation_speed
         = 0.5 * golden_ratio * rcp(600.0) * WEATHER_WIND_VARIATION_SPEED;
     const float random_wind_min = 0.0;
     const float random_wind_max = 1.0;

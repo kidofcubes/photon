@@ -19,6 +19,7 @@
 
 #if defined WAVING_PLANTS || defined WAVING_LEAVES
 #include "/include/weather/core.glsl"
+#include "/include/misc/screenshot_features_overrides.glsl"
 #endif
 
 #ifdef IS_IRIS
@@ -82,8 +83,9 @@ vec3 get_wind_displacement(
     float wind_strength,
     bool is_tall_plant_top_vertex
 ) {
-    const float wind_angle = 30.0 * degree;
-    const vec2 wind_dir = vec2(cos(wind_angle), sin(wind_angle));
+    // kidofcubes -- sway settings
+    float wind_angle = SWAY_ANGLE * degree;
+    vec2 wind_dir = vec2(cos(wind_angle), sin(wind_angle));
 
 #if defined WORLD_OVERWORLD
     // Adjust wind strength based on weather windiness
@@ -105,23 +107,28 @@ vec3 get_wind_displacement(
 #endif
     // end kidofcubes -- loopingsway
 
+    // kidofcubes -- sway settings
+    t *= SWAY_TIME_VARIATION;
+
     float gust_amount
-        = texture(noisetex, 0.05 * (world_pos.xz + wind_dir * t)).y;
+        = texture(noisetex, 0.05 * ((world_pos.xz * SWAY_SPACE_VARIATION_STRENGTH) + wind_dir * t)).y;
     gust_amount *= gust_amount;
 
     vec3 gust = vec3(wind_dir * gust_amount, 0.1 * gust_amount).xzy;
 
+    world_pos *= SWAY_SPACE_VARIATION_DIRECTION;
     world_pos = 32.0 * world_pos + 3.0 * t
         + vec3(0.0, golden_angle, 2.0 * golden_angle);
     vec3 wobble = sin(world_pos) + 0.5 * sin(2.0 * world_pos)
         + 0.25 * sin(4.0 * world_pos);
+    // end kidofcubes -- sway settings
 
     if (is_tall_plant_top_vertex) {
         gust *= 2.0;
         wobble *= 0.5;
     }
 
-    return wind_strength * (gust + 0.1 * wobble);
+    return wind_strength * ((gust + 0.1 * wobble) * SWAY_STRENGTH);
 }
 #endif
 
